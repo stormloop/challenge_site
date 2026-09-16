@@ -241,7 +241,7 @@ export function useDataService() {
                                     setError: Function = DEFAULT_SET_ERROR) : Promise<{[key: string] : Participant}>  => {
         const response: {[key: string] : Participant} = await APIRequest( {
             token: await getToken(),
-            endpoint: `/games/${game.game_uuid}/participants/`,
+            endpoint: `/games/${game.game_uuid}/participants`,
             requestType: RequestType.GET,
             bodyContentType: ContentType.JSON,
             responseContentType: ContentType.JSON,
@@ -267,7 +267,7 @@ export function useDataService() {
                                     setError: Function = DEFAULT_SET_ERROR) : Promise<LeaderboardEntry[]>  => {
         const response: [string, number][] = await APIRequest( {
             token: await getToken(),
-            endpoint: `/games/${game.game_uuid}/leaderboard/`,
+            endpoint: `/games/${game.game_uuid}/leaderboard`,
             requestType: RequestType.GET,
             bodyContentType: ContentType.JSON,
             responseContentType: ContentType.JSON,
@@ -485,7 +485,7 @@ export function useDataService() {
 
         const result: ChallengeInstance = await APIRequest( {
                 token: await getToken(),
-                endpoint: `/games/${game.game_uuid}/challenge_instances/`,
+                endpoint: `/games/${game.game_uuid}/challenge_instances`,
                 requestType: RequestType.POST,
                 bodyContentType: ContentType.JSON,
                 responseContentType: ContentType.JSON,
