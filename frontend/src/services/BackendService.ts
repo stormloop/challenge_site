@@ -1,6 +1,4 @@
-import { useAuth0, User, type Auth0ContextInterface } from "@auth0/auth0-react";
-import { useEffect, useState } from "react";
-import App from "../App";
+import { useAuth0 } from "@auth0/auth0-react";
 
 
 // Provides primitive functions to get data from the backend API.

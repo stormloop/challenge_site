@@ -1,4 +1,4 @@
-import { useState, createContext, useRef } from 'react';
+import { useState, createContext } from 'react';
 import styled from 'styled-components';
 
 const StyledWrapper = styled.div`
@@ -113,7 +113,7 @@ export const PopupContext = createContext<PopupContextProps>({
     refreshPopup: () => { }
 });
 
-export const PopupProvider = ({ children }) => {
+export const PopupProvider = ({ children }: any) => {
     const [popups, setPopups] = useState<PopupProps[]>([]);
 
     function closePopup(depth: number = -1) {

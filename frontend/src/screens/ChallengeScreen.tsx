@@ -4,7 +4,7 @@ import type { User } from '../data/User';
 import type { Game } from '../data/Game';
 import { Challenge, ChallengeType } from '../data/Challenge';
 import { Challenge as ChallengeDisplay } from '../components/Challenge';
-import { ChallengeInstance, ChallengeInstanceStatus, type ChallengeInstance as ChallengeInstanceType } from '../data/ChallengeInstance';
+import { ChallengeInstance, ChallengeInstanceStatus } from '../data/ChallengeInstance';
 import { OngoingChallengeInstance as OngoingChallengeInstanceDisplay } from '../components/OngoingChallengeInstance';
 import { useEffect, useState } from 'react';
 import SubNavBar, { SUBNAVBAR_HEIGHT } from '../components/SubNavBar';
@@ -87,7 +87,7 @@ background-color: ${props => props.theme.bg_color};
 }
     `;
 
-export const ChallengeScreen: React.FC<{ auth0interface: Auth0ContextInterface<Auth0User>, user: User, participant: Participant, allParticipants: { [key: string]: Participant }, currentGame: Game }> = ({ auth0interface, user, participant, allParticipants, currentGame }) => {
+export const ChallengeScreen: React.FC<{ auth0interface: Auth0ContextInterface<Auth0User>, user: User, participant: Participant, allParticipants: { [key: string]: Participant }, currentGame: Game }> = ({ auth0interface, participant, allParticipants, currentGame }) => {
     const { getChallengeInstances, getVisibleChallenges } = useDataService();
 
     // subtab 0: discover new challenges.
@@ -119,7 +119,7 @@ export const ChallengeScreen: React.FC<{ auth0interface: Auth0ContextInterface<A
      * Adds a challenge instance to challengeInstances, and thus rerenders if necessary.
      * Does not update the backend.
      */
-    const addChallengeInstance = async (instance: ChallengeInstance) => {
+    const addChallengeInstance = async (_: ChallengeInstance) => {
         const challenges: Challenge[] = await getVisibleChallenges(currentGame, false);
         challenges.sort((a, b) => {  // First sort by challenge type, then alphabetically by name.
             if (a.get_challenge_type() != b.get_challenge_type())
@@ -161,7 +161,7 @@ export const ChallengeScreen: React.FC<{ auth0interface: Auth0ContextInterface<A
                         <div>
                             <Separator text="Solo Challenges" />
                             {challenges.length == 0 ? <p className="central_message">There are no solo challenges left to start, good job!</p> :
-                                challenges.filter(challenge => challenge.type == ChallengeType.Solo && (challenge.is_startable(challengeInstances) || challenge.is_joinable(challengeInstances))).map((value: Challenge, index: number) => {
+                                challenges.filter(challenge => challenge.type == ChallengeType.Solo && (challenge.is_startable(challengeInstances) || challenge.is_joinable(challengeInstances))).map((value: Challenge, _: number) => {
                                     return (
                                         <ChallengeDisplay key={value.challenge_uuid}
                                             auth0interface={auth0interface}
@@ -175,7 +175,7 @@ export const ChallengeScreen: React.FC<{ auth0interface: Auth0ContextInterface<A
                                 })}
                             <Separator text="Cooperation Challenges" />
                             {challenges.length == 0 ? <p className="central_message">There are no cooperation challenges left to start, good job!</p> :
-                                challenges.filter(challenge => challenge.type == ChallengeType.Coop && (challenge.is_startable(challengeInstances) || challenge.is_joinable(challengeInstances))).map((value: Challenge, index: number) => {
+                                challenges.filter(challenge => challenge.type == ChallengeType.Coop && (challenge.is_startable(challengeInstances) || challenge.is_joinable(challengeInstances))).map((value: Challenge, _: number) => {
                                     return (
                                         <ChallengeDisplay key={value.challenge_uuid}
                                             auth0interface={auth0interface}
@@ -190,7 +190,7 @@ export const ChallengeScreen: React.FC<{ auth0interface: Auth0ContextInterface<A
                             <Separator text="Contests" />
 
                             {challenges.length == 0 ? <p className="central_message">There are no contests left to start, good job!</p> :
-                                challenges.filter(challenge => challenge.type == ChallengeType.Contest && (challenge.is_startable(challengeInstances) || challenge.is_joinable(challengeInstances))).map((value: Challenge, index: number) => {
+                                challenges.filter(challenge => challenge.type == ChallengeType.Contest && (challenge.is_startable(challengeInstances) || challenge.is_joinable(challengeInstances))).map((value: Challenge, _: number) => {
                                     return (
                                         <ChallengeDisplay key={value.challenge_uuid}
                                             auth0interface={auth0interface}

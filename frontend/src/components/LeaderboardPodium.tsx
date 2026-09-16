@@ -1,8 +1,5 @@
-import React, { useState } from 'react'
-import type { ComponentType, SVGProps } from "react";
 import { styled, useTheme } from 'styled-components';
 
-import Participant from '../data/Participant'
 import type LeaderboardEntry from '../data/LeaderboardEntry';
 import Pfp from './Pfp';
 
@@ -78,7 +75,7 @@ top: 28px;
 `;
 
 
-export const LeaderboardPodium: React.FC<{ leaderboardEntries: LeaderboardEntry[], onClick: Function }> = ({ leaderboardEntries, onClick }) => {
+export const LeaderboardPodium: React.FC<{ leaderboardEntries: LeaderboardEntry[], onClick: Function }> = ({ leaderboardEntries }) => {
     return (
         <PodiumStyle>
             {

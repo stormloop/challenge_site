@@ -1,11 +1,10 @@
-import styled, { ThemeConsumer, ThemeProvider, useTheme } from 'styled-components'
+import styled, { useTheme } from 'styled-components'
 import { NAVBAR_HEIGHT } from "../components/NavBar";
 import { User } from '../data/User';
 import type { Game } from '../data/Game';
 import type Participant from '../data/Participant';
 import { useAuth0, type Auth0ContextInterface, type User as Auth0User } from '@auth0/auth0-react';
-import type { PopupProps } from '../components/PopupWindow';
-import { use, useContext, useEffect, useState } from 'react';
+import { useContext, useState } from 'react';
 
 import location_icon from '../assets/location_icon.svg?react'
 import { useDataService } from '../services/DataService';
@@ -75,10 +74,10 @@ select {
 }
     `;
 
-const AccountEditPopupBody: React.FC<{ auth0interface: Auth0ContextInterface<Auth0User>, user: User, updateUser: Function }> = ({ auth0interface, user, updateUser }) => {
+const AccountEditPopupBody: React.FC<{ auth0interface: Auth0ContextInterface<Auth0User>, user: User, updateUser: Function }> = ({ user, updateUser }) => {
     const { updateUser: updateUserBackend, updateUserPfp: updateUserPfpBackend } = useDataService();
     const theme = useTheme();
-    const { closePopup, openPopup } = useContext(PopupContext);
+    const { closePopup } = useContext(PopupContext);
 
     const [hasUpdatedPfp, setHasUpdatedPfp] = useState<boolean>(false);
     const [newPfp, setNewPfp] = useState<File | null>(user.profile_picture);

@@ -1,5 +1,4 @@
-import React, { useState } from 'react'
-import type { ComponentType } from "react";
+import React from 'react'
 import { styled } from 'styled-components';
 
 export const SUBNAVBAR_HEIGHT: number = 35 + 10; // Actual height + gap from navbar.

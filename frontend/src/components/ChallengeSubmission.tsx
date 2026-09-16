@@ -1,11 +1,10 @@
-import React, { useContext, useEffect, useRef, useState } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import { styled, useTheme } from 'styled-components';
 
 import image_not_found from '../assets/image_not_found.svg'
-import { Challenge as ChallengeObject, ChallengeType } from '../data/Challenge'
 import Button from './Button';
 import type { Game } from '../data/Game';
-import { ChallengeInstance as ChallengeInstanceObject, ChallengeInstanceStatus, StatusToString } from '../data/ChallengeInstance';
+import { ChallengeInstance as ChallengeInstanceObject, ChallengeInstanceStatus } from '../data/ChallengeInstance';
 import type Participant from '../data/Participant';
 import type { Auth0ContextInterface, User } from '@auth0/auth0-react';
 import { ChallengeSubmission as ChallengeSubmissionObject } from '../data/ChallengeSubmission';
@@ -115,7 +114,7 @@ video {
 }
 `;
 
-export const ChallengeSubmission: React.FC<{ auth0interface: Auth0ContextInterface<User>, currentGame: Game, participant: Participant, challengeInstance: ChallengeInstanceObject, challengeSubmission: ChallengeSubmissionObject, submittor: Participant, removeChallengeSubmission: Function }> = ({ auth0interface, currentGame, participant, challengeInstance, challengeSubmission, submittor, removeChallengeSubmission }) => {
+export const ChallengeSubmission: React.FC<{ auth0interface: Auth0ContextInterface<User>, currentGame: Game, participant: Participant, challengeInstance: ChallengeInstanceObject, challengeSubmission: ChallengeSubmissionObject, submittor: Participant, removeChallengeSubmission: Function }> = ({ currentGame, challengeInstance, challengeSubmission, submittor, removeChallengeSubmission }) => {
     const { getSubmissionFiles, removeChallengeSubmission: removeChallengeSubmissionBackend } = useDataService();
     const { closePopup, openPopup } = useContext(PopupContext);
     const theme = useTheme();
@@ -177,12 +176,12 @@ export const ChallengeSubmission: React.FC<{ auth0interface: Auth0ContextInterfa
         removeChallengeSubmission();
     }
 
-    /**
-     * Downloads one of the challenge submission files to the local device.
-     */
-    function downloadFile(f: File) {
-        throw new Error("not implemented");
-    }
+    // /**
+    //  * Downloads one of the challenge submission files to the local device.
+    //  */
+    // function downloadFile(f: File) {
+    //     throw new Error("not implemented");
+    // }
 
     function openDeletePopup(): void {
         openPopup({

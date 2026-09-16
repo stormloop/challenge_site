@@ -1,10 +1,10 @@
-import React, { useContext, useEffect, useRef, useState, type ChangeEvent, type ChangeEventHandler } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import { styled, useTheme } from 'styled-components';
 
-import { Challenge as ChallengeObject, ChallengeType, ContestEntryType } from '../data/Challenge'
+import { ChallengeType } from '../data/Challenge'
 import Button from './Button';
 import type { Game } from '../data/Game';
-import { ChallengeInstance as ChallengeInstanceObject, ChallengeInstanceStatus, StatusToString } from '../data/ChallengeInstance';
+import { ChallengeInstance as ChallengeInstanceObject, ChallengeInstanceStatus } from '../data/ChallengeInstance';
 import type Participant from '../data/Participant';
 import type { Auth0ContextInterface, User } from '@auth0/auth0-react';
 import { ChallengeSubmission } from '../data/ChallengeSubmission';
@@ -136,8 +136,8 @@ width: 100%;
 `;
 
 export const OngoingChallengeInstance: React.FC<{ auth0interface: Auth0ContextInterface<User>, currentGame: Game, participant: Participant, participants: { [key: string]: Participant }, challengeInstance: ChallengeInstanceObject, updateChallengeInstance: Function, leaveChallengeInstance: Function }> = ({ auth0interface, currentGame, participant, participants, challengeInstance, updateChallengeInstance, leaveChallengeInstance }) => {
-    const { getChallengeSubmissions, updateChallengeInstance: updateChallengeInstanceBackend, leaveChallengeInstance: leaveChallengeInstanceBackend, addChallengeSubmission, getChallengeInstance } = useDataService();
-    const { closePopup, openPopup, refreshPopup } = useContext(PopupContext);
+    const { getChallengeSubmissions, updateChallengeInstance: updateChallengeInstanceBackend, leaveChallengeInstance: leaveChallengeInstanceBackend, getChallengeInstance } = useDataService();
+    const { closePopup, openPopup } = useContext(PopupContext);
     const theme = useTheme();
 
     const tabs: string[] = ["Challenge", "Submissions"]

@@ -1,4 +1,3 @@
-import React, { useState } from 'react'
 import type { ComponentType, SVGProps } from "react";
 import { styled } from 'styled-components';
 
@@ -73,7 +72,7 @@ interface NavBarProps {
  * This implementation allows the designer to define a set of tabs, each with icon and text.
  * The NavBar can then be implemented in the page by usign GetHtml()
  */
-export const NavBar: React.FC<NavBarProps> = ({ tabs, icons, currentTab, setCurrentTab }) => {
+export const NavBar: React.FC<NavBarProps> = ({ tabs, icons, setCurrentTab }) => {
     return (
         <StyledWrapper>
             <hr className="navbar_hr" />

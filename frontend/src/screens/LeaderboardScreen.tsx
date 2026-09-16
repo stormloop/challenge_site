@@ -1,7 +1,6 @@
 import styled from 'styled-components'
 import Leaderboard from '../components/Leaderboard.tsx';
 import LeaderboardPodium from '../components/LeaderboardPodium.tsx';
-import type Participant from '../data/Participant.ts';
 import { NAVBAR_HEIGHT } from "../components/NavBar";
 import type LeaderboardEntry from '../data/LeaderboardEntry.ts';
 
@@ -25,8 +24,8 @@ padding-bottom: ${BOTTOM_PADDING}px;
 export const LeaderboardScreen: React.FC<{ leaderboardEntries: LeaderboardEntry[] }> = ({ leaderboardEntries }) => {
     return (
         <StyledWrapper>
-            <LeaderboardPodium leaderboardEntries={leaderboardEntries} onClick={(index: number) => { }} />
-            <Leaderboard leaderboardEntries={leaderboardEntries} onClick={(index: number) => { }} />
+            <LeaderboardPodium leaderboardEntries={leaderboardEntries} onClick={(_: number) => { }} />
+            <Leaderboard leaderboardEntries={leaderboardEntries} onClick={(_: number) => { }} />
         </StyledWrapper>)
 }
 

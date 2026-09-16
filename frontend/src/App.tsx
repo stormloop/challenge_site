@@ -241,7 +241,7 @@ function App() {
               <NavBar tabs={["Account"]}
                 icons={[account_tab_icon]}
                 currentTab={0}
-                setCurrentTab={(tab) => { }} />
+                setCurrentTab={(_) => { }} />
               {/* </fieldset>
             {popup == null || <PopupWindow {...popup}></PopupWindow>} */}
             </PopupProvider>

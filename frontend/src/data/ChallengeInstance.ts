@@ -56,7 +56,7 @@ export class ChallengeInstance {
                 || this.status == ChallengeInstanceStatus.Ongoing;
     }
 
-    public IsChatPossible(isAdmin: boolean) : boolean {
+    public IsChatPossible(_: boolean) : boolean {
         return true;
     }
 

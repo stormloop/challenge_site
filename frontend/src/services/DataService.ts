@@ -294,6 +294,8 @@ export function useDataService() {
                                         admin_mode: boolean,
                                         setLoading: Function = DEFAULT_SET_LOADING,
                                         setError: Function = DEFAULT_SET_ERROR) : Promise<Challenge[]> => {
+        if (admin_mode)
+            throw new Error("Admin mode not implemented");
         const response: Set<Challenge> = await APIRequest( {
                 token: await getToken(),
                 endpoint: `/games/${game.game_uuid}/challenges`,
@@ -318,6 +320,8 @@ export function useDataService() {
                                             admin_mode: boolean,
                                             setLoading: Function = DEFAULT_SET_LOADING,
                                             setError: Function = DEFAULT_SET_ERROR) : Promise<ChallengeInstance[]> => {
+        if (admin_mode)
+            throw new Error("Admin mode not implemented");
         const batch: {[key: string] : BatchRequestProps} = {};
         for (var i = 0; i < participant.challenge_instance_uuids.size; i++) {
             batch[[...participant.challenge_instance_uuids][i]] = {
@@ -328,7 +332,7 @@ export function useDataService() {
             };
         }
 
-        const response: { [key: string]: ChallengeInstance } = await APIBatchRequest( {
+        const response: { [key: string]: any } = await APIBatchRequest( {
                 token: await getToken(),
                 batch: batch,
                 setLoading: setLoading,
@@ -339,7 +343,7 @@ export function useDataService() {
         for (var key in response) {
             const challengeInstance = Object.assign(new ChallengeInstance(), response[key]);
             challengeInstance.challenge = Object.assign(new Challenge(), challengeInstance.challenge);
-            challengeInstance.leaderboard = challengeInstance.leaderboard == null ? null : challengeInstance.leaderboard.map((value, _) => Object.assign(new LeaderboardEntry(), {participant: participants[value[0]], value: value[1] as number}));
+            challengeInstance.leaderboard = challengeInstance.leaderboard == null ? [] : challengeInstance.leaderboard.map((value: any, _: any) => Object.assign(new LeaderboardEntry(), {participant: participants[value[0]], value: value[1] as number}));
             challengeInstanceArray.push(challengeInstance);
         }
         return challengeInstanceArray;
@@ -353,7 +357,7 @@ export function useDataService() {
                                         participants: {[key: string] : Participant},
                                         setLoading: Function = DEFAULT_SET_LOADING,
                                         setError: Function = DEFAULT_SET_ERROR) : Promise<ChallengeInstance> => {
-        const response: ChallengeInstance = await APIRequest( {
+        const response: any = await APIRequest( {
                 token: await getToken(),
                 endpoint: `/games/${game.game_uuid}/challenge_instances/${challengeInstanceUuid}`,
                 requestType: RequestType.GET,
@@ -364,7 +368,7 @@ export function useDataService() {
                 body: null,
                 });
         const challengeInstance = Object.assign(new ChallengeInstance(), response);
-        challengeInstance.leaderboard = challengeInstance.leaderboard == null ? null : challengeInstance.leaderboard.map((value, _) => Object.assign(new LeaderboardEntry(), {participant: participants[value[0]], value: value[1] as number}));
+        challengeInstance.leaderboard = challengeInstance.leaderboard == null ? [] : challengeInstance.leaderboard.map((value: any, _: any) => Object.assign(new LeaderboardEntry(), {participant: participants[value[0]], value: value[1] as number}));
         challengeInstance.challenge = Object.assign(new Challenge(), challengeInstance.challenge);
         
         return challengeInstance;
@@ -378,7 +382,7 @@ export function useDataService() {
                                                     participants: {[key: string] : Participant},
                                                     setLoading: Function = DEFAULT_SET_LOADING,
                                                     setError: Function = DEFAULT_SET_ERROR) : Promise<ChallengeInstance[]> => {
-        const response: { [key: string]: ChallengeInstance } = await APIRequest( {
+        const response: { [key: string]: any } = await APIRequest( {
                 token: await getToken(),
                 endpoint: `/games/${game.game_uuid}/challenges/${challenge.challenge_uuid}/joinable_instances`,
                 requestType: RequestType.GET,
@@ -392,7 +396,7 @@ export function useDataService() {
         let challengeInstanceArray: ChallengeInstance[] = [];
         for (var key in response) {
             const challengeInstance = Object.assign(new ChallengeInstance(), response[key]);
-            challengeInstance.leaderboard = challengeInstance.leaderboard == null ? null : challengeInstance.leaderboard.map((value, _) => Object.assign(new LeaderboardEntry(), {participant: participants[value[0]], value: value[1] as number}));
+            challengeInstance.leaderboard = challengeInstance.leaderboard == null ? [] : challengeInstance.leaderboard.map((value: any, _: any) => Object.assign(new LeaderboardEntry(), {participant: participants[value[0]], value: value[1] as number}));
             challengeInstanceArray.push(challengeInstance);
         }
         return challengeInstanceArray;
@@ -406,6 +410,8 @@ export function useDataService() {
                                             admin_mode: boolean,
                                             setLoading: Function = DEFAULT_SET_LOADING,
                                             setError: Function = DEFAULT_SET_ERROR) : Promise<void> => {
+        if (admin_mode)
+            throw new Error("Admin mode not implemented");
         const {leaderboard, ...other_entries} = newChallengeInstance;
         const basicLeaderboard: [string, string][] | null = leaderboard == null ? null : leaderboard.map((value, _) => [value.participant.user.user_uuid, "" + value.points]);
         const apiRepresentation = {...other_entries, leaderboard: basicLeaderboard};
@@ -428,6 +434,8 @@ export function useDataService() {
                                         admin_mode: boolean,
                                         setLoading: Function = DEFAULT_SET_LOADING,
                                         setError: Function = DEFAULT_SET_ERROR) : Promise<void> => {
+        if (admin_mode)
+            throw new Error("Admin mode not implemented");
         await APIRequest( {
                 token: await getToken(),
                 endpoint: `/games/${game.game_uuid}/challenge_instances/${challengeInstance.challenge_instance_uuid}/participants`,
@@ -450,6 +458,8 @@ export function useDataService() {
                                             admin_mode: boolean,
                                             setLoading: Function = DEFAULT_SET_LOADING,
                                             setError: Function = DEFAULT_SET_ERROR) : Promise<void> => {
+        if (admin_mode)
+            throw new Error("Admin mode not implemented");
         await APIRequest( {
                 token: await getToken(),
                 endpoint: `/games/${game.game_uuid}/challenge_instances/${challengeInstance.challenge_instance_uuid}/participants/${participant.user.user_uuid}`,
@@ -467,6 +477,8 @@ export function useDataService() {
                                         admin_mode: boolean,
                                         setLoading: Function = DEFAULT_SET_LOADING,
                                         setError: Function = DEFAULT_SET_ERROR) : Promise<ChallengeInstance> => {
+        if (admin_mode)
+            throw new Error("Admin mode not implemented");
         const {leaderboard, ...other_entries} = challengeInstance;
         const basicLeaderboard: [string, string][] | null = leaderboard == null ? null : leaderboard.map((value, _) => [value.participant.user.user_uuid, "" + value.points]);
         const apiRepresentation = {...other_entries, leaderboard: basicLeaderboard};
@@ -515,6 +527,8 @@ export function useDataService() {
                                             admin_mode: boolean,
                                             setLoading: Function = DEFAULT_SET_LOADING,
                                             setError: Function = DEFAULT_SET_ERROR) : Promise<ChallengeSubmission> => {
+        if (admin_mode)
+            throw new Error("Admin mode not implemented");
         const submissionForm: FormData = challengeSubmission.ToUploadRepresentation();
 
         const response: ChallengeSubmission = await APIRequest( {
@@ -540,6 +554,8 @@ export function useDataService() {
                                             admin_mode: boolean,
                                             setLoading: Function = DEFAULT_SET_LOADING,
                                             setError: Function = DEFAULT_SET_ERROR) : Promise<void> => {
+        if (admin_mode)
+            throw new Error("Admin mode not implemented");
         await APIRequest( {
                 token: await getToken(),
                 endpoint: `/games/${game.game_uuid}/challenge_instances/${challengeInstance.challenge_instance_uuid}/submissions/${challengeSubmission.challenge_submission_uuid}`,

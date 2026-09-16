@@ -90,7 +90,7 @@ width: 100%;
  * This implementation allows the designer to define a set of tabs, each with icon and text.
  * The NavBar can then be implemented in the page by usign GetHtml()
  */
-export const Challenge: React.FC<{ auth0interface: Auth0ContextInterface<User>, currentGame: Game, participant: Participant, allParticipants: { [key: string]: Participant }, challenge: ChallengeObject, challengeInstances: ChallengeInstance[], addChallengeInstance: Function }> = ({ auth0interface, currentGame, participant, allParticipants, challenge, challengeInstances, addChallengeInstance }) => {
+export const Challenge: React.FC<{ auth0interface: Auth0ContextInterface<User>, currentGame: Game, participant: Participant, allParticipants: { [key: string]: Participant }, challenge: ChallengeObject, challengeInstances: ChallengeInstance[], addChallengeInstance: Function }> = ({ currentGame, participant, allParticipants, challenge, challengeInstances, addChallengeInstance }) => {
     const { addChallengeInstance: addChallengeInstanceBackend, getJoinableChallengeInstances, joinChallengeInstance: JoinChallengeInstanceBackend } = useDataService();
     const { closePopup, openPopup } = useContext(PopupContext);
     const theme = useTheme();

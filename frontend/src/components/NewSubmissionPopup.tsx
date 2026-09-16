@@ -102,7 +102,7 @@ textarea {
 }
     `;
 
-export const NewSubmissionPopup: React.FC<{ auth0interface: Auth0ContextInterface<User>, currentGame: Game, participant: Participant, allParticipants: { [key: string]: Participant }, challengeInstance: ChallengeInstance, updateChallengeInstance: Function, leaveChallengeInstance: Function, submissions: ChallengeSubmission[], setSubmissions: Function }> = ({ auth0interface, currentGame, participant, allParticipants, challengeInstance, updateChallengeInstance, leaveChallengeInstance, submissions, setSubmissions }) => {
+export const NewSubmissionPopup: React.FC<{ auth0interface: Auth0ContextInterface<User>, currentGame: Game, participant: Participant, allParticipants: { [key: string]: Participant }, challengeInstance: ChallengeInstance, updateChallengeInstance: Function, leaveChallengeInstance: Function, submissions: ChallengeSubmission[], setSubmissions: Function }> = ({ currentGame, participant, allParticipants, challengeInstance, updateChallengeInstance, submissions, setSubmissions }) => {
     const { addChallengeSubmission, getChallengeInstance } = useDataService();
     const { closePopup, openPopup, refreshPopup } = useContext(PopupContext);
     const theme = useTheme();

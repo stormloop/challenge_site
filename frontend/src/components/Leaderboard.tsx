@@ -1,7 +1,4 @@
 import styled, { useTheme } from "styled-components";
-import type Participant from "../data/Participant";
-import { NAVBAR_HEIGHT } from "./NavBar";
-import { PODIUM_HEIGHT } from "./LeaderboardPodium";
 import type LeaderboardEntry from "../data/LeaderboardEntry";
 import Pfp from "./Pfp";
 

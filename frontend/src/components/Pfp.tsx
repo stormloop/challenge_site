@@ -1,6 +1,4 @@
-import type { ComponentType, SVGProps } from "react";
 import { styled } from 'styled-components';
-import type { User } from "../data/User";
 
 
 const StyledWrapper = styled.div<{ bg_color: string }>`
