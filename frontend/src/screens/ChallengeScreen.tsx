@@ -87,8 +87,8 @@ background-color: ${props => props.theme.bg_color};
 }
     `;
 
-export const ChallengeScreen: React.FC<{ auth0interface: Auth0ContextInterface<Auth0User>, user: User, participant: Participant, allParticipants: { [key: string]: Participant }, currentGame: Game }> = ({ auth0interface, participant, allParticipants, currentGame }) => {
-    const { getChallengeInstances, getVisibleChallenges } = useDataService();
+export const ChallengeScreen: React.FC<{ auth0interface: Auth0ContextInterface<Auth0User>, user: User, adminEnabled: boolean, participant: Participant, allParticipants: { [key: string]: Participant }, currentGame: Game }> = ({ auth0interface, adminEnabled, participant, allParticipants, currentGame }) => {
+    const { getChallengeInstances, getAllChallengeInstances, getVisibleChallenges } = useDataService();
 
     // subtab 0: discover new challenges.
     // subtab 1: view ongoing challenges.
@@ -100,7 +100,7 @@ export const ChallengeScreen: React.FC<{ auth0interface: Auth0ContextInterface<A
     // All ongoing/finished challenges.
     const [challengeInstances, setChallengeInstances] = useState<ChallengeInstance[]>([]);
     const onFirstRender = async () => {
-        const challenges: Challenge[] = await getVisibleChallenges(currentGame, false);
+        const challenges: Challenge[] = await getVisibleChallenges(currentGame, adminEnabled);
         challenges.sort((a, b) => {  // First sort by challenge type, then alphabetically by name.
             if (a.get_challenge_type() != b.get_challenge_type())
                 return a.get_challenge_type() - b.get_challenge_type();
@@ -108,7 +108,11 @@ export const ChallengeScreen: React.FC<{ auth0interface: Auth0ContextInterface<A
         });
         setChallenges(challenges);
 
-        const challengeInstances: ChallengeInstance[] = await getChallengeInstances(currentGame, participant, allParticipants, false);
+        let challengeInstances: ChallengeInstance[];
+        if (adminEnabled)
+            challengeInstances = await getAllChallengeInstances(currentGame, allParticipants);
+        else
+            challengeInstances = await getChallengeInstances(currentGame, participant, allParticipants, adminEnabled);
         setChallengeInstances(challengeInstances);
     };
     useEffect(() => {
@@ -116,11 +120,21 @@ export const ChallengeScreen: React.FC<{ auth0interface: Auth0ContextInterface<A
     }, []);
 
     /**
+     * Updates a challenge from challenges, and thus rerenders if necessary.
+     * Does not update the backend.
+     */
+    function updateChallenge(index: number, newInstance: Challenge): void {
+        const copyArray: Challenge[] = challenges.concat([]);
+        copyArray[index] = newInstance;
+        setChallenges(copyArray);
+    }
+
+    /**
      * Adds a challenge instance to challengeInstances, and thus rerenders if necessary.
      * Does not update the backend.
      */
     const addChallengeInstance = async (_: ChallengeInstance) => {
-        const challenges: Challenge[] = await getVisibleChallenges(currentGame, false);
+        const challenges: Challenge[] = await getVisibleChallenges(currentGame, adminEnabled);
         challenges.sort((a, b) => {  // First sort by challenge type, then alphabetically by name.
             if (a.get_challenge_type() != b.get_challenge_type())
                 return a.get_challenge_type() - b.get_challenge_type();
@@ -128,7 +142,11 @@ export const ChallengeScreen: React.FC<{ auth0interface: Auth0ContextInterface<A
         });
         setChallenges(challenges);
 
-        const challengeInstances: ChallengeInstance[] = await getChallengeInstances(currentGame, participant, allParticipants, false);
+        let challengeInstances: ChallengeInstance[];
+        if (adminEnabled)
+            challengeInstances = await getAllChallengeInstances(currentGame, allParticipants);
+        else
+            challengeInstances = await getChallengeInstances(currentGame, participant, allParticipants, adminEnabled);
         setChallengeInstances(challengeInstances);
     }
 
@@ -161,28 +179,32 @@ export const ChallengeScreen: React.FC<{ auth0interface: Auth0ContextInterface<A
                         <div>
                             <Separator text="Solo Challenges" />
                             {challenges.length == 0 ? <p className="central_message">There are no solo challenges left to start, good job!</p> :
-                                challenges.filter(challenge => challenge.type == ChallengeType.Solo && (challenge.is_startable(challengeInstances) || challenge.is_joinable(challengeInstances))).map((value: Challenge, _: number) => {
+                                challenges.filter(challenge => challenge.type == ChallengeType.Solo && (challenge.is_startable(challengeInstances) || challenge.is_joinable(challengeInstances))).map((value: Challenge, index: number) => {
                                     return (
                                         <ChallengeDisplay key={value.challenge_uuid}
                                             auth0interface={auth0interface}
                                             currentGame={currentGame}
                                             participant={participant}
+                                            adminEnabled={adminEnabled}
                                             allParticipants={allParticipants}
                                             challenge={value}
+                                            updateChallenge={(newchallenge: Challenge) => updateChallenge(index, newchallenge)}
                                             challengeInstances={challengeInstances}
                                             addChallengeInstance={addChallengeInstance} />
                                     )
                                 })}
                             <Separator text="Cooperation Challenges" />
                             {challenges.length == 0 ? <p className="central_message">There are no cooperation challenges left to start, good job!</p> :
-                                challenges.filter(challenge => challenge.type == ChallengeType.Coop && (challenge.is_startable(challengeInstances) || challenge.is_joinable(challengeInstances))).map((value: Challenge, _: number) => {
+                                challenges.filter(challenge => challenge.type == ChallengeType.Coop && (challenge.is_startable(challengeInstances) || challenge.is_joinable(challengeInstances))).map((value: Challenge, index: number) => {
                                     return (
                                         <ChallengeDisplay key={value.challenge_uuid}
                                             auth0interface={auth0interface}
                                             currentGame={currentGame}
                                             participant={participant}
+                                            adminEnabled={adminEnabled}
                                             allParticipants={allParticipants}
                                             challenge={value}
+                                            updateChallenge={(newchallenge: Challenge) => updateChallenge(index, newchallenge)}
                                             challengeInstances={challengeInstances}
                                             addChallengeInstance={addChallengeInstance} />
                                     )
@@ -190,14 +212,16 @@ export const ChallengeScreen: React.FC<{ auth0interface: Auth0ContextInterface<A
                             <Separator text="Contests" />
 
                             {challenges.length == 0 ? <p className="central_message">There are no contests left to start, good job!</p> :
-                                challenges.filter(challenge => challenge.type == ChallengeType.Contest && (challenge.is_startable(challengeInstances) || challenge.is_joinable(challengeInstances))).map((value: Challenge, _: number) => {
+                                challenges.filter(challenge => challenge.type == ChallengeType.Contest && (challenge.is_startable(challengeInstances) || challenge.is_joinable(challengeInstances))).map((value: Challenge, index: number) => {
                                     return (
                                         <ChallengeDisplay key={value.challenge_uuid}
                                             auth0interface={auth0interface}
                                             currentGame={currentGame}
                                             participant={participant}
+                                            adminEnabled={adminEnabled}
                                             allParticipants={allParticipants}
                                             challenge={value}
+                                            updateChallenge={(newchallenge: Challenge) => updateChallenge(index, newchallenge)}
                                             challengeInstances={challengeInstances}
                                             addChallengeInstance={addChallengeInstance} />
                                     )
@@ -214,6 +238,7 @@ export const ChallengeScreen: React.FC<{ auth0interface: Auth0ContextInterface<A
                                                     auth0interface={auth0interface}
                                                     currentGame={currentGame}
                                                     participant={participant}
+                                                    adminEnabled={adminEnabled}
                                                     participants={allParticipants}
                                                     challengeInstance={value}
                                                     updateChallengeInstance={(instance: ChallengeInstance) => updateChallengeInstance(index, instance)}
@@ -228,6 +253,7 @@ export const ChallengeScreen: React.FC<{ auth0interface: Auth0ContextInterface<A
                                                 auth0interface={auth0interface}
                                                 currentGame={currentGame}
                                                 participant={participant}
+                                                adminEnabled={adminEnabled} 
                                                 participants={allParticipants}
                                                 challengeInstance={value}
                                                 updateChallengeInstance={(instance: ChallengeInstance) => updateChallengeInstance(index, instance)}
@@ -245,6 +271,7 @@ export const ChallengeScreen: React.FC<{ auth0interface: Auth0ContextInterface<A
                                                 auth0interface={auth0interface}
                                                 currentGame={currentGame}
                                                 participant={participant}
+                                                adminEnabled={adminEnabled}     
                                                 participants={allParticipants}
                                                 challengeInstance={value}
                                                 updateChallengeInstance={(instance: ChallengeInstance) => updateChallengeInstance(index, instance)}

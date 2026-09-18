@@ -7,12 +7,16 @@ from models.game_participant import GameParticipant
 from models.user import User
 
 
-def has_admin_access(user: User = Depends(get_current_user), participant: GameParticipant = Depends(get_current_participant)):
+def has_admin_permissions(user: User = Depends(get_current_user), participant: GameParticipant = Depends(get_current_participant)):
     if is_global_admin(user):
         return True
-    if participant is not None and participant.is_admin:
+    if (participant is not None and participant.is_admin):
         return True
     return False
+
+
+def has_admin_enabled(admin_mode: bool, user: User = Depends(get_current_user), participant: GameParticipant = Depends(get_current_participant)):
+    return has_admin_permissions(user, participant) and admin_mode
 
 
 async def get_body(request: Request):

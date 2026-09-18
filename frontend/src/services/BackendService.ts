@@ -84,6 +84,8 @@ function constructBody(requestProps: RequestProps) : any {
 }
 
 async function parseResult(requestProps: RequestProps, response: Response) : Promise<any> {
+    if (response.status == 204)
+        return;
     if (requestProps.responseContentType == ContentType.JSON) {
         return await response.json();
     }

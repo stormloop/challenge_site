@@ -16,6 +16,7 @@ import NewSubmissionPopup from './NewSubmissionPopup';
 import { PopupContext } from '../context/PopupContext';
 import { dateComparer } from '../utils/comparers';
 import Leaderboard from './Leaderboard';
+import EditChallengeInstancePopup from './EditChallengeInstancePopup';
 
 
 const StyledWrapper = styled.div`
@@ -135,8 +136,8 @@ width: 100%;
 }
 `;
 
-export const OngoingChallengeInstance: React.FC<{ auth0interface: Auth0ContextInterface<User>, currentGame: Game, participant: Participant, participants: { [key: string]: Participant }, challengeInstance: ChallengeInstanceObject, updateChallengeInstance: Function, leaveChallengeInstance: Function }> = ({ auth0interface, currentGame, participant, participants, challengeInstance, updateChallengeInstance, leaveChallengeInstance }) => {
-    const { getChallengeSubmissions, updateChallengeInstance: updateChallengeInstanceBackend, leaveChallengeInstance: leaveChallengeInstanceBackend, getChallengeInstance } = useDataService();
+export const OngoingChallengeInstance: React.FC<{ auth0interface: Auth0ContextInterface<User>, currentGame: Game, participant: Participant, adminEnabled: boolean, participants: { [key: string]: Participant }, challengeInstance: ChallengeInstanceObject, updateChallengeInstance: Function, leaveChallengeInstance: Function }> = ({ auth0interface, currentGame, participant, adminEnabled, participants, challengeInstance, updateChallengeInstance, leaveChallengeInstance }) => {
+    const { getChallengeSubmissions, updateChallengeInstance: updateChallengeInstanceBackend, deleteChallengeInstance: deleteChallengeInstanceBackend, leaveChallengeInstance: leaveChallengeInstanceBackend, getChallengeInstance } = useDataService();
     const { closePopup, openPopup } = useContext(PopupContext);
     const theme = useTheme();
 
@@ -149,7 +150,7 @@ export const OngoingChallengeInstance: React.FC<{ auth0interface: Auth0ContextIn
     const [submissions, setSubmissions] = useState<ChallengeSubmission[]>([]);
 
     const loadSubmissions = async () => {
-        const submissions: ChallengeSubmission[] = await getChallengeSubmissions(currentGame, challengeInstance);
+        const submissions: ChallengeSubmission[] = await getChallengeSubmissions(currentGame, challengeInstance, adminEnabled);
         setSubmissions(submissions);
     }
 
@@ -190,6 +191,26 @@ export const OngoingChallengeInstance: React.FC<{ auth0interface: Auth0ContextIn
         </div>
     );
 
+    const openEditPopup = () => {
+        openPopup({
+            header: "Edit Challenge Instance",
+            getBody: () => {
+                return (
+                    <EditChallengeInstancePopup
+                            auth0interface={auth0interface}
+                            currentGame={currentGame}
+                            participant={participant}
+                            allParticipants={participants}
+                            challengeInstance={challengeInstance}
+                            updateChallengeInstance={updateChallengeInstance}
+                            leaveChallengeInstance={leaveChallengeInstance} />
+                );
+            },
+
+            onAbort: closePopup
+        });
+    }
+
     const leaveChallengeInstancePopup = () => {
         const StyledWrapper = styled.div`
             display: flex;
@@ -215,6 +236,43 @@ export const OngoingChallengeInstance: React.FC<{ auth0interface: Auth0ContextIn
                                     throw new Error("Tried to leave game 'null'");
                                 leaveChallengeInstance();
                                 leaveChallengeInstanceBackend(currentGame, challengeInstance, participant, false);
+                                closePopup();
+                            }} />
+                            <Button color={theme.accent_color_3} text="Cancel" icon={null} disabled={false} onClick={closePopup} />
+                        </div>
+                    </StyledWrapper>
+                );
+            },
+
+            onAbort: closePopup
+        });
+    }
+
+    const openDeletePopup = () => {
+        const StyledWrapper = styled.div`
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+
+            div {
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+            }
+        `;
+
+        openPopup({
+            header: "Are you sure?",
+            getBody: () => {
+                return (
+                    <StyledWrapper>
+                        <p>You are attempting to delete '{challengeInstance.challenge.name}'</p>
+                        <div>
+                            <Button color={theme.accent_color_5} text="Delete" icon={null} disabled={false} onClick={() => {
+                                if (currentGame == null)
+                                    throw new Error("Tried to delete instance in game 'null'");
+                                leaveChallengeInstance();
+                                deleteChallengeInstanceBackend(currentGame, challengeInstance);
                                 closePopup();
                             }} />
                             <Button color={theme.accent_color_3} text="Cancel" icon={null} disabled={false} onClick={closePopup} />
@@ -269,7 +327,14 @@ export const OngoingChallengeInstance: React.FC<{ auth0interface: Auth0ContextIn
             <h1>Description</h1>
             <p>{challengeInstance.challenge.description}</p>
             {
-                challengeInstance.challenge.type == ChallengeType.Contest ?
+                adminEnabled ? 
+                (
+                    <div className="button_area">
+                            <Button text="Delete" icon={null} disabled={false} onClick={openDeletePopup} color={theme.accent_color_5} />
+                            <Button text="Edit" icon={null} disabled={false} onClick={openEditPopup} color={theme.accent_color_1} />
+                    </div>
+                )
+                : challengeInstance.challenge.type == ChallengeType.Contest ?
                     (
                         <div className="button_area">
                             <Button text="Leave" icon={null} disabled={false} onClick={leaveChallengeInstancePopup} color={theme.accent_color_5} />
@@ -293,6 +358,7 @@ export const OngoingChallengeInstance: React.FC<{ auth0interface: Auth0ContextIn
                 auth0interface={auth0interface}
                 currentGame={currentGame}
                 participant={participant}
+                adminEnabled={adminEnabled}
                 allParticipants={participants}
                 challengeInstance={challengeInstance}
                 updateChallengeInstance={updateChallengeInstance}
@@ -332,6 +398,7 @@ export const OngoingChallengeInstance: React.FC<{ auth0interface: Auth0ContextIn
                             auth0interface={auth0interface}
                             currentGame={currentGame}
                             participant={participant}
+                            adminEnabled={adminEnabled}
                             submittor={participants[value.participant_uuid]}
                             challengeInstance={challengeInstance}
                             challengeSubmission={value}

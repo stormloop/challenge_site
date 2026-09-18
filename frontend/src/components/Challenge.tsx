@@ -9,6 +9,7 @@ import type Participant from '../data/Participant';
 import type { Auth0ContextInterface, User } from '@auth0/auth0-react';
 import { useDataService } from '../services/DataService';
 import { PopupContext } from '../context/PopupContext';
+import EditChallengePopup from './EditChallengepopup';
 
 const StyledWrapper = styled.div`
 color: ${props => props.theme.text_color};
@@ -90,7 +91,7 @@ width: 100%;
  * This implementation allows the designer to define a set of tabs, each with icon and text.
  * The NavBar can then be implemented in the page by usign GetHtml()
  */
-export const Challenge: React.FC<{ auth0interface: Auth0ContextInterface<User>, currentGame: Game, participant: Participant, allParticipants: { [key: string]: Participant }, challenge: ChallengeObject, challengeInstances: ChallengeInstance[], addChallengeInstance: Function }> = ({ currentGame, participant, allParticipants, challenge, challengeInstances, addChallengeInstance }) => {
+export const Challenge: React.FC<{ auth0interface: Auth0ContextInterface<User>, currentGame: Game, participant: Participant, adminEnabled: boolean, allParticipants: { [key: string]: Participant }, challenge: ChallengeObject, updateChallenge: Function, challengeInstances: ChallengeInstance[], addChallengeInstance: Function }> = ({ auth0interface, currentGame, participant, adminEnabled, allParticipants, challenge, updateChallenge, challengeInstances, addChallengeInstance }) => {
     const { addChallengeInstance: addChallengeInstanceBackend, getJoinableChallengeInstances, joinChallengeInstance: JoinChallengeInstanceBackend } = useDataService();
     const { closePopup, openPopup } = useContext(PopupContext);
     const theme = useTheme();
@@ -115,7 +116,7 @@ export const Challenge: React.FC<{ auth0interface: Auth0ContextInterface<User>, 
         challengeInstance.overwrite_leaderboard_to_manual = false;
         challengeInstance.leaderboard = [];
 
-        challengeInstance = await addChallengeInstanceBackend(currentGame, challengeInstance, false);
+        challengeInstance = await addChallengeInstanceBackend(currentGame, challengeInstance, adminEnabled);
         addChallengeInstance(challengeInstance);
         participant.challenge_instance_uuids.add(challengeInstance.challenge_instance_uuid);
         console.warn("modifying upper layer state variable: participant");
@@ -191,24 +192,32 @@ export const Challenge: React.FC<{ auth0interface: Auth0ContextInterface<User>, 
                             ))
                         }
                     </StyledWrapper>
-                )
-
-
-                return joinableInstances.map((value: ChallengeInstance, _: number) => (
-                    <div>
-                        <h1>Instance</h1>
-                        {
-                            [...value.participant_uuids].map((participant_uuid: string, _: number) =>
-                                allParticipants[participant_uuid].user.username
-                            )
-                        }
-                        <button onClick={() => joinChallengeInstance(value)}>Join</button>
-                    </div>
-                ));
+                );
             },
 
             onAbort: closePopup
         });
+    }
+
+    async function openEditPopup() {
+
+        openPopup({
+            header: "Select existing challenge",
+            getBody: () => {
+                return (
+                    <EditChallengePopup 
+                        auth0interface={auth0interface}
+                        currentGame={currentGame}
+                        participant={participant}
+                        allParticipants={allParticipants}
+                        challenge={challenge}
+                        updateChallenge={updateChallenge}/>
+                );
+            },
+
+            onAbort: closePopup
+        });
+
     }
 
     return (
@@ -235,6 +244,12 @@ export const Challenge: React.FC<{ auth0interface: Auth0ContextInterface<User>, 
                     <h1>Description</h1>
                     <p>{challenge.description}</p>
                     {
+                    adminEnabled ? 
+                        <div className="buttonsArea">
+                            <Button text="Edit" icon={null} color={theme.accent_color_1} onClick={openEditPopup} disabled={false} />
+                            <Button text="Start" icon={null} color={theme.accent_color_2} onClick={startChallenge} disabled={false} />
+                        </div>
+                     : (
                         challenge.get_challenge_type() == ChallengeType.Solo ?
                             <div className="buttonsArea">
                                 <Button text="Start" icon={null} color={theme.accent_color_2} onClick={startChallenge} disabled={false} />
@@ -243,6 +258,7 @@ export const Challenge: React.FC<{ auth0interface: Auth0ContextInterface<User>, 
                                 <Button disabled={!challenge.is_joinable(challengeInstances)} text="Join Existing" icon={null} color={theme.accent_color_2} onClick={joinExistingChallengePopup} />
                                 <Button disabled={!challenge.is_startable(challengeInstances)} text="Start New" icon={null} color={theme.accent_color_2} onClick={startChallenge} />
                             </div>
+                    )
                     }
                 </div>
             }

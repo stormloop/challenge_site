@@ -126,10 +126,10 @@ function App() {
   const onChangeCurrentGame = async () => {
     if (myUser == null || currentGame == null)
       return;
-    const participant: Participant = await getParticipant(myUser, currentGame);
+    const participant: Participant = await getParticipant(myUser, currentGame, false);
     setMyParticipant(participant);
 
-    const allParticipants: { [key: string]: Participant } = await getParticipants(currentGame, myUser.user_uuid);
+    const allParticipants: { [key: string]: Participant } = await getParticipants(currentGame, myUser.user_uuid, false);
     for (var participant_uuid in allParticipants) {
       allParticipants[participant_uuid].user = await loadUserPfp(allParticipants[participant_uuid].user);
     }
@@ -221,6 +221,7 @@ function App() {
                 user={myUser}
                 updateUser={updateUser}
                 participant={myParticipant}
+                participants={participants}
                 adminEnabled={adminEnabled}
                 setAdminEnabled={setAdminEnabled}
                 currentGame={currentGame}
@@ -258,13 +259,14 @@ function App() {
           <PopupProvider>
             {/* <fieldset disabled={popup != null}> */}
             {/* disables interactivity when the popup is enabled. */}
-            {tab == 0 ? <ChallengeScreen auth0interface={auth0interface} user={myUser} participant={myParticipant} allParticipants={participants} currentGame={currentGame} /> :
+            {tab == 0 ? <ChallengeScreen auth0interface={auth0interface} user={myUser} adminEnabled={adminEnabled} participant={myParticipant} allParticipants={participants} currentGame={currentGame} /> :
               tab == 1 ? <LeaderboardScreen leaderboardEntries={leaderboard} /> :
                 <AccountScreen
                   auth0interface={auth0interface}
                   user={myUser}
                   updateUser={updateUser}
                   participant={myParticipant}
+                  participants={participants}
                   adminEnabled={adminEnabled}
                   setAdminEnabled={setAdminEnabled}
                   currentGame={currentGame}

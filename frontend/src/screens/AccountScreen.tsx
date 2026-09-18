@@ -1,7 +1,7 @@
 import styled, { useTheme } from 'styled-components'
 import { NAVBAR_HEIGHT } from "../components/NavBar";
 import { User } from '../data/User';
-import type { Game } from '../data/Game';
+import { Game } from '../data/Game';
 import type Participant from '../data/Participant';
 import { useAuth0, type Auth0ContextInterface, type User as Auth0User } from '@auth0/auth0-react';
 import { useContext, useState } from 'react';
@@ -73,6 +73,119 @@ select {
     display: none;
 }
     `;
+
+const StyledWrapperGameEditPopup = styled.div`
+display: flex;
+flex-direction: column;
+justify-content: space-between;
+overflow: auto;
+
+input {
+    background-color: ${props => props.theme.bg_color_darkened};
+    border-radius: 16px;
+    border: none;
+    padding-left: 16px;
+    margin: 5px;
+    margin-bottom: 16px;
+    line-height: 3em;
+}
+
+.participant_entry {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 8px 16px 8px 16px;
+}
+.first {
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+}
+.last {
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+}
+.highlighted {
+    background-color: ${props => props.theme.accent_color_1};
+}
+.even {
+    background-color: ${props => props.theme.bg_color_darkened};
+}
+.odd {
+    background-color: ${props => props.theme.bg_color};
+}
+
+.center_align {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+}
+    `;
+
+const GameEditpopupBody: React.FC<{participant: Participant, participants: { [key: string] : Participant}, currentGame: Game, setGame: Function }> = ({ participant, participants, currentGame, setGame }) => {
+        const { leaveGame: leaveGameBackend, updateGame: updateGameBackend } = useDataService();
+        const theme = useTheme();
+        const { closePopup, openPopup } = useContext(PopupContext);
+
+        function openKickPopup(participant: Participant) {
+            const StyledWrapper = styled.div`
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+            `;
+            
+            openPopup({
+                header: `Are you sure you want to kick ${participant.user.username}`,
+                getBody: () => (
+                    <StyledWrapper>
+                        <Button color={theme.accent_color_3} text="Cancel" icon={null} disabled={false} onClick={closePopup} />
+                        <Button color={theme.accent_color_5} text="Kick" icon={null} disabled={false} onClick={async () => {
+                            if (currentGame == null)
+                                throw new Error("No game specified")
+                            const updatedGame: Game = Object.assign(new Game(), currentGame);
+                            updatedGame.participant_uuids.delete(participant.user.user_uuid);
+                            await leaveGameBackend(participant.user, currentGame, true);
+                            setGame(updatedGame);
+                            closePopup();
+                        }} />
+                    </StyledWrapper>
+                ),
+
+                onAbort: closePopup
+            });
+        }
+
+        return (
+            <StyledWrapperGameEditPopup>
+                    <p>Name:</p>
+                    <input id="game_name_input" type="text" defaultValue={currentGame?.name} />
+                    <div className="center_align">
+                        <Button text="Save" icon={null} disabled={false} color={theme.accent_color_1} onClick={async () => {
+                                if (currentGame == null)
+                                    throw new Error("No game specified")
+                                const updatedGame: Game = Object.assign(new Game(), currentGame)
+                                updatedGame.name = (document.getElementById("game_name_input") as HTMLInputElement).value;
+                                await updateGameBackend(updatedGame);
+                                setGame(updatedGame);
+                        }} />
+                    </div>
+                    <p>Participants:</p>
+                    {
+                        [...currentGame?.participant_uuids ?? []].map((value, index) => {
+                            return (
+                                <div key={index} className={"participant_entry" 
+                                                    + (index == 0 ? " first" : "") 
+                                                    + (index == (Object.keys(participants).length ?? 1) - 1 ? " last" : "") 
+                                                    + (value == participant?.user.user_uuid ? " highlighted" 
+                                                            : (index % 2 == 0 ? " even" : " odd"))}>
+                                    <p>{participants[value].user.username}</p>
+                                    <Button text="Remove" icon={null} disabled={value == participant?.user.user_uuid} color={theme.accent_color_5} onClick={() => openKickPopup(participants[value])} />
+                                </div>
+                            );
+                        })
+                    }
+                </StyledWrapperGameEditPopup>
+        );
+}
 
 const AccountEditPopupBody: React.FC<{ auth0interface: Auth0ContextInterface<Auth0User>, user: User, updateUser: Function }> = ({ user, updateUser }) => {
     const { updateUser: updateUserBackend, updateUserPfp: updateUserPfpBackend } = useDataService();
@@ -289,7 +402,7 @@ select {
     background-color: ${props => props.theme.bg_color_darkened};
     border-radius: 16px;
     border: none;
-    padding-left: 16px;
+    padding: 16px;
     padding-right: 16px;
     margin: 5px;
     color: ${props => props.theme.text_color};
@@ -297,7 +410,7 @@ select {
 
 `;
 
-export const AccountScreen: React.FC<{ auth0interface: Auth0ContextInterface<Auth0User>, user: User, updateUser: Function, participant: Participant | null, adminEnabled: boolean, setAdminEnabled: Function, currentGame: Game | null, allGames: Game[], setGame: Function, leaveGame: Function, joinGame: Function }> = ({ auth0interface, user, updateUser, participant, adminEnabled, setAdminEnabled, currentGame, allGames, setGame, leaveGame, joinGame }) => {
+export const AccountScreen: React.FC<{ auth0interface: Auth0ContextInterface<Auth0User>, user: User, updateUser: Function, participant: Participant | null, participants: { [key: string] : Participant}, adminEnabled: boolean, setAdminEnabled: Function, currentGame: Game | null, allGames: Game[], setGame: Function, leaveGame: Function, joinGame: Function }> = ({ auth0interface, user, updateUser, participant, participants, adminEnabled, setAdminEnabled, currentGame, allGames, setGame, leaveGame, joinGame }) => {
     const { leaveGame: leaveGameBackend, joinGame: joinGameBackend } = useDataService();
     const { logout: logoutAuth0 } = useAuth0();
     const theme = useTheme();
@@ -308,6 +421,22 @@ export const AccountScreen: React.FC<{ auth0interface: Auth0ContextInterface<Aut
         openPopup({
             header: "Edit Account Settings",
             getBody: () => AccountEditPopupBody({ auth0interface, user, updateUser }),
+
+            onAbort: closePopup
+        });
+    }
+
+    function openEditGamePopup() {
+        if (currentGame == null)
+            throw new Error("No game set")
+        if (participant == null)
+            throw new Error("No participant set")
+
+        openPopup({
+            header: `Editing Game`,
+            getBody: () => (
+                <GameEditpopupBody participant={participant} participants={participants} currentGame={currentGame} setGame={setGame} />
+            ),
 
             onAbort: closePopup
         });
@@ -328,10 +457,9 @@ export const AccountScreen: React.FC<{ auth0interface: Auth0ContextInterface<Aut
                         if (currentGame == null)
                             throw new Error("Tried to leave game 'null'");
                         leaveGame(currentGame);
-                        leaveGameBackend(user, currentGame);
+                        leaveGameBackend(user, currentGame, false);
                         closePopup();
                     }} />
-                    <Button color={theme.accent_color_3} text="Cancel" icon={null} disabled={false} onClick={closePopup} />
                 </StyledWrapper>
             ),
 
@@ -425,6 +553,7 @@ export const AccountScreen: React.FC<{ auth0interface: Auth0ContextInterface<Aut
 
                     </div>)
                 }
+                {allGames.length > 0 && adminEnabled && <Button color={theme.accent_color_1} text="Edit Current Game" icon={null} disabled={false} onClick={openEditGamePopup} />}
                 {allGames.length > 0 && <Button color={theme.accent_color_5} text="Leave Current Game" icon={null} disabled={false} onClick={openLeaveGamePopup} />}
                 <Button color={theme.accent_color_3} text="Join New Game" icon={null} disabled={false} onClick={openJoinGamePopup} />
             </div>

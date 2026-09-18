@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 from fastapi_batch import BatchGateway, BatchResponse  # For downloading files.
 
 from utils.files import get_file_type
-from utils.dependencies import get_body, has_admin_access
+from utils.dependencies import has_admin_enabled, has_admin_permissions
 from models.user import User, UserUpDownload
 from models.game import Game, GameUpDownload
 from models.game_participant import GameParticipant, GameParticipantUpDownload
@@ -231,7 +231,7 @@ async def add_game(new_game: Game, requestor: User = Depends(get_current_user)):
 
 # Deletes a game. Also deletes all associated saved data.
 # This should only be doable by an admin.
-@app.delete("/games/{game_uuid}", status_code=204) # Status code 204 corresponds to 'request fulfilled, no content to return'.
+@app.delete("/admin/games/{game_uuid}", status_code=204) # Status code 204 corresponds to 'request fulfilled, no content to return'.
 async def delete_game(game_uuid: int, requestor: User = Depends(get_current_user)):
     if not db.game_exists(game_uuid):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
@@ -249,17 +249,13 @@ async def delete_game(game_uuid: int, requestor: User = Depends(get_current_user
 
 # Changes a games data. Attempts to change the uuid will not work.
 # This should only be doable by an admin.
-@app.put("/games/{game_uuid}")
-async def update_game(game_uuid: int, updated_game: GameUpDownload, requestor: User = Depends(get_current_user)):
+@app.put("/admin/games/{game_uuid}")
+async def update_game(game_uuid: int, updated_game: GameUpDownload, admin_mode: bool = Depends(has_admin_permissions), requestor: User = Depends(get_current_user)):
     if not db.game_exists(game_uuid):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Cannot update this game (game does not exist)")
 
-    action_allowed = is_global_admin(requestor) \
-        or (db.participant_exists(game_uuid, requestor.user_uuid) \
-            and db.get_game_participant(game_uuid, requestor.user_uuid).is_admin)
-
-    if not action_allowed:
+    if not admin_mode:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Cannot update this game (insufficient permissions)")
 
@@ -268,6 +264,21 @@ async def update_game(game_uuid: int, updated_game: GameUpDownload, requestor: U
 """
     GAME PARTICIPANT endpoint.
 """
+
+# Gets all participants of a game.
+# Does not share ongoing challenges with other users.
+@app.get("/admin/games/{game_uuid}/participants", response_model=Dict[str, GameParticipantUpDownload])
+async def get_participants(game_uuid: int, admin_mode: bool = Depends(has_admin_permissions), requestor: GameParticipant | User = Depends(get_current_participant)):
+    if not admin_mode:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Cannot access data for this game (insufficient permissions)")
+
+    result = set()
+    for participant_uuid in db.get_game(game_uuid).participant_uuids:
+        participant = db.get_game_participant(game_uuid, participant_uuid)
+        # Only share ongoing challenges both players are a part of.
+        result.add(participant)
+    return {str(val.user_uuid): val.to_endpoint_representation(db) for val in result}
 
 # Gets all participants of a game.
 # Does not share ongoing challenges with other users.
@@ -282,23 +293,26 @@ async def get_participants(game_uuid: int, requestor: GameParticipant | User = D
     for participant_uuid in db.get_game(game_uuid).participant_uuids:
         participant = db.get_game_participant(game_uuid, participant_uuid)
         # Only share ongoing challenges both players are a part of.
-        prune_challenge_instances = (not is_global_admin(requestor)) if isinstance(requestor, User) else participant_uuid != requestor.user_uuid
-        if prune_challenge_instances:
-            participant.challenge_instance_uuids = {uuid for uuid in participant.challenge_instance_uuids \
-                                                            if db.get_challenge_instance(game_uuid, uuid).is_visible_by(requestor)}
+        participant.challenge_instance_uuids = {uuid for uuid in participant.challenge_instance_uuids \
+                                                        if db.get_challenge_instance(game_uuid, uuid).is_visible_by(requestor)}
         result.add(participant)
     return {str(val.user_uuid): val.to_endpoint_representation(db) for val in result}
     
-
+# Gets a participant of a game.
+@app.get("/admin/games/{game_uuid}/participants/{user_uuid}", response_model=GameParticipantUpDownload)
+async def get_participant(game_uuid: int, user_uuid: int, admin_mode: bool = Depends(has_admin_permissions), requestor: GameParticipant | User = Depends(get_current_participant)):
+    if not admin_mode:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Cannot view participant (insufficient permissions)")
+    participant = db.get_game_participant(game_uuid, user_uuid)
+    return participant.to_endpoint_representation(db)
+    
 # Gets a participant of a game.
 @app.get("/games/{game_uuid}/participants/{user_uuid}", response_model=GameParticipantUpDownload)
 async def get_participant(game_uuid: int, user_uuid: int, requestor: GameParticipant | User = Depends(get_current_participant)):
     participant = db.get_game_participant(game_uuid, user_uuid)
-    # Only share ongoing challenges both players are a part of.
-    prune_challenge_instances = (not is_global_admin(requestor)) if isinstance(requestor, User) else user_uuid != requestor.user_uuid
-    if prune_challenge_instances:
-        participant.challenge_instance_uuids = {uuid for uuid in participant.challenge_instance_uuids \
-                                                        if db.get_challenge_instance(game_uuid, uuid).is_visible_by(requestor)}
+    participant.challenge_instance_uuids = {uuid for uuid in participant.challenge_instance_uuids \
+                                                    if db.get_challenge_instance(game_uuid, uuid).is_visible_by(requestor)}
     return participant.to_endpoint_representation(db)
 
 # Allows a user to join a game.
@@ -323,11 +337,25 @@ async def add_participant(game_uuid: int, user: UserUpDownload, requestor: User 
 
 # Deletes a game participant. Does not delete all associated saved data as that might invalidate coop or contest challenges.
 # This should only be doable by an admin or the user themselves.
+@app.delete("/admin/games/{game_uuid}/participants/{user_uuid}", status_code=204) # Status code 204 corresponds to 'request fulfilled, no content to return'.
+async def delete_participant(game_uuid: int, user_uuid: int, admin_mode: bool = Depends(has_admin_permissions), requestor: GameParticipant | User = Depends(get_current_participant)):
+    if not has_admin_permissions:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail="Cannot remove user from this game")
+    if not db.user_exists(user_uuid):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail="User does not exist")
+    if not db.participant_exists(game_uuid, user_uuid):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail="User is not a participant")
+
+    db.delete_game_participant(game_uuid, user_uuid)
+
+# Deletes a game participant. Does not delete all associated saved data as that might invalidate coop or contest challenges.
+# This should only be doable by an admin or the user themselves.
 @app.delete("/games/{game_uuid}/participants/{user_uuid}", status_code=204) # Status code 204 corresponds to 'request fulfilled, no content to return'.
 async def delete_participant(game_uuid: int, user_uuid: int, requestor: GameParticipant | User = Depends(get_current_participant)):
-    action_allowed = is_global_admin(requestor) if isinstance(requestor, User) else requestor.is_admin or user_uuid == requestor.user_uuid
-
-    if not action_allowed:
+    if user_uuid != requestor.user_uuid:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                 detail="Cannot remove user from this game")
     if not db.user_exists(user_uuid):
@@ -387,10 +415,17 @@ async def get_game_leaderboard(game_uuid: int, requestor: User = Depends(get_cur
 """
 
 # Gets all challenges of a game.
-@app.get("/games/{game_uuid}/challenges", response_model=Set[ChallengeUpDownload])
-async def get_visible_challenges(game_uuid: int, has_admin_access: bool = Depends(has_admin_access), requestor: GameParticipant | None = Depends(get_current_participant)):
-    if has_admin_access:
+@app.get("/admin/games/{game_uuid}/challenges", response_model=Set[ChallengeUpDownload])
+async def get_visible_challenges(game_uuid: int, admin_permissions: bool = Depends(has_admin_permissions), requestor: GameParticipant | None = Depends(get_current_participant)):
+    if admin_permissions:
          return {value.to_endpoint_representation(requestor, game_uuid, db) for value in db.get_challenges(game_uuid).values()}
+
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="You do not have access to the admin portal.")
+
+# Gets all challenges of a game.
+@app.get("/games/{game_uuid}/challenges", response_model=Set[ChallengeUpDownload])
+async def get_visible_challenges(game_uuid: int, requestor: GameParticipant | None = Depends(get_current_participant)):
     if requestor is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="You do not have access to this game.")
@@ -398,9 +433,9 @@ async def get_visible_challenges(game_uuid: int, has_admin_access: bool = Depend
 
 # Gets a challenge of a game.
 @app.get("/games/{game_uuid}/challenges/{challenge_uuid}", response_model=ChallengeUpDownload)
-async def get_visible_challenge(game_uuid: int, challenge_uuid: int, has_admin_access: bool = Depends(has_admin_access), requestor: GameParticipant | None = Depends(get_current_participant)):
-    if has_admin_access:
-                return db.get_challenge(game_uuid, challenge_uuid).to_endpoint_representation(requestor, game_uuid, db)
+async def get_visible_challenge(game_uuid: int, challenge_uuid: int, requestor: GameParticipant | None = Depends(get_current_participant)):
+    # if has_admin_access:
+    #             return db.get_challenge(game_uuid, challenge_uuid).to_endpoint_representation(requestor, game_uuid, db)
     if requestor is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="You do not have access to this game.")
@@ -424,10 +459,9 @@ async def get_joinable_instances(game_uuid: int, challenge_uuid: int, requestor:
 # Adds a challenge to a game.
 # Uuid generation is done in the backend, so the uuid passed by the user is ignored, and the newly generated uuid is passed to the client in the response body. 
 # This should only be allowed by an admin.
-@app.post("/games/{game_uuid}/challenges", response_model=int)
-async def add_supported_challenge(game_uuid: int, new_challenge: Challenge, requestor: GameParticipant | User = Depends(get_current_participant)):
-    action_allowed = is_global_admin(requestor) if isinstance(requestor, User) else requestor.is_admin
-    if not action_allowed:
+@app.post("/admin/games/{game_uuid}/challenges", response_model=int)
+async def add_supported_challenge(game_uuid: int, new_challenge: Challenge, admin_mode: bool = Depends(has_admin_permissions), requestor: GameParticipant | User = Depends(get_current_participant)):
+    if not admin_mode:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                 detail="Cannot add challenge to this game")
     
@@ -435,12 +469,11 @@ async def add_supported_challenge(game_uuid: int, new_challenge: Challenge, requ
     
 # Deletes a challenge. Deletes all instances of that challenge that have been started or completed already.
 # This should only be doable by an admin.
-@app.delete("/games/{game_uuid}/challenges/{challenge_uuid}", status_code=204) # Status code 204 corresponds to 'request fulfilled, no content to return'.
-async def delete_supported_challenge(game_uuid: int, challenge_uuid: int, requestor: GameParticipant | User = Depends(get_current_participant)):
-    action_allowed = is_global_admin(requestor) if isinstance(requestor, User) else requestor.is_admin
-    if not action_allowed:
+@app.delete("/admin/games/{game_uuid}/challenges/{challenge_uuid}", status_code=204) # Status code 204 corresponds to 'request fulfilled, no content to return'.
+async def delete_supported_challenge(game_uuid: int, challenge_uuid: int, admin_mode: bool = Depends(has_admin_permissions), requestor: GameParticipant | User = Depends(get_current_participant)):
+    if not admin_mode:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail="Cannot add challenge to this game")
+                            detail="Cannot remove challeneg from this game (insufficient permissions)")
 
     if not db.challenge_exists(game_uuid, challenge_uuid):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
@@ -450,12 +483,11 @@ async def delete_supported_challenge(game_uuid: int, challenge_uuid: int, reques
 
 # Updates a challenges data.
 # This should only be doable by an admin.
-@app.put("/games/{game_uuid}/challenges/{challenge_uuid}")
-async def update_supported_challenge(game_uuid: int, challenge_uuid: int, updated_challenge: ChallengeUpDownload, requestor: GameParticipant | User = Depends(get_current_participant)):
-    action_allowed = is_global_admin(requestor) if isinstance(requestor, User) else requestor.is_admin
-    if not action_allowed:
+@app.put("/admin/games/{game_uuid}/challenges/{challenge_uuid}")
+async def update_supported_challenge(game_uuid: int, challenge_uuid: int, updated_challenge: ChallengeUpDownload, admin_mode: bool = Depends(has_admin_permissions), requestor: GameParticipant | User = Depends(get_current_participant)):
+    if not has_admin_permissions:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                                detail="Cannot update challenge")
+                                detail="Cannot update challenge (insufficient permissions)")
 
     if not db.challenge_exists(game_uuid, challenge_uuid):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
@@ -466,6 +498,15 @@ async def update_supported_challenge(game_uuid: int, challenge_uuid: int, update
 """
     GAME CHALLENGE INSTANCE endpoint.
 """
+
+# Gets all challenge instances of a game.
+@app.get("/admin/games/{game_uuid}/challenge_instances", response_model=Set[ChallengeInstanceUpDownload])
+async def get_challenge_instances(game_uuid: int, admin_mode: bool = Depends(has_admin_permissions), requestor: GameParticipant | User = Depends(get_current_participant)):
+    if not admin_mode:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Cannot view these challenge instances (insufficent permissions)")
+
+    return set(value.to_endpoint_representation(requestor, game_uuid, db) for value in db.get_challenge_instances(game_uuid).values())
 
 # Gets all challenge instances of a game.
 @app.get("/games/{game_uuid}/challenge_instances", response_model=Set[ChallengeInstanceUpDownload])
@@ -492,6 +533,19 @@ async def get_challenge_instances(game_uuid: int, challenge_instance_uuids=Set[s
     return results
 
 # Gets a challenge instance of a game.
+@app.get("/admin/games/{game_uuid}/challenge_instances/{challenge_instance_uuid}", response_model=ChallengeInstanceUpDownload)
+async def get_challenge_instance(game_uuid: int, challenge_instance_uuid: int, admin_mode: bool = Depends(has_admin_permissions), requestor: GameParticipant | User = Depends(get_current_participant)):
+    if not admin_mode:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Cannot retrieve challenge instance (insufficient permissions)")
+    if not db.challenge_instance_exists(game_uuid, challenge_instance_uuid):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Challenge instance does not exist")
+
+    challenge_instance = db.get_challenge_instance(game_uuid, challenge_instance_uuid)
+    return challenge_instance.to_endpoint_representation(requestor, game_uuid, db)
+
+# Gets a challenge instance of a game.
 @app.get("/games/{game_uuid}/challenge_instances/{challenge_instance_uuid}", response_model=ChallengeInstanceUpDownload)
 async def get_challenge_instance(game_uuid: int, challenge_instance_uuid: int, requestor: GameParticipant | User = Depends(get_current_participant)):
     if not db.challenge_instance_exists(game_uuid, challenge_instance_uuid):
@@ -500,7 +554,7 @@ async def get_challenge_instance(game_uuid: int, challenge_instance_uuid: int, r
 
     challenge_instance = db.get_challenge_instance(game_uuid, challenge_instance_uuid)
 
-    if (isinstance(requestor, User) and requestor.is_global_admin) or (isinstance(requestor, GameParticipant) and challenge_instance.is_visible_by(requestor)):
+    if isinstance(requestor, GameParticipant) and challenge_instance.is_visible_by(requestor):
         return challenge_instance.to_endpoint_representation(requestor, game_uuid, db)
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                         detail="Challenge instance not accessible")
@@ -509,18 +563,18 @@ async def get_challenge_instance(game_uuid: int, challenge_instance_uuid: int, r
 # Adds a challenge instance to a game.
 # Uuid generation is done in the backend, so the uuid passed by the user is ignored, and the newly generated uuid is passed to the client in the response body. 
 @app.post("/games/{game_uuid}/challenge_instances", response_model=ChallengeInstanceUpDownload)
-async def add_challenge_instance(game_uuid: int, new_challenge_instance: ChallengeInstanceUpDownload, requestor: GameParticipant | User = Depends(get_current_participant)):
+async def add_challenge_instance(game_uuid: int, new_challenge_instance: ChallengeInstanceUpDownload, admin_mode: bool = Depends(has_admin_enabled), requestor: GameParticipant | User = Depends(get_current_participant)):
+    print(admin_mode)
     new_challenge_instance: ChallengeInstance = ChallengeInstance.from_endpoint_representation(new_challenge_instance)
 
     if not db.challenge_exists(game_uuid, new_challenge_instance.challenge_uuid):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Associated challenge does not exist")
 
-    admin_permission = isinstance(requestor, User) and is_global_admin(requestor) or requestor.is_admin
-    if not admin_permission and not requestor.user_uuid in new_challenge_instance.participant_uuids:
+    if not admin_mode and not requestor.user_uuid in new_challenge_instance.participant_uuids:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Cannot create this challenge instance")
-    if not admin_permission and not db.get_challenge(game_uuid, new_challenge_instance.challenge_uuid).is_joinable_by(requestor, game_uuid, db):
+    if not admin_mode and not db.get_challenge(game_uuid, new_challenge_instance.challenge_uuid).is_joinable_by(requestor, game_uuid, db):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Cannot create this challenge instance")
 
@@ -546,12 +600,11 @@ async def add_challenge_instance(game_uuid: int, new_challenge_instance: Challen
 
 # Deletes a challenge instance.
 # This should only be doable by an admin.
-@app.delete("/games/{game_uuid}/challenge_instances/{challenge_instance_uuid}", status_code=204) # Status code 204 corresponds to 'request fulfilled, no content to return'.
-async def delete_challenge_instance(game_uuid: int, challenge_instance_uuid: int, requestor: GameParticipant | User = Depends(get_current_participant)):
-    admin_permission = isinstance(requestor, User) and is_global_admin(requestor) or requestor.is_admin
-    if not admin_permission:
+@app.delete("/admin/games/{game_uuid}/challenge_instances/{challenge_instance_uuid}", status_code=204) # Status code 204 corresponds to 'request fulfilled, no content to return'.
+async def delete_challenge_instance(game_uuid: int, challenge_instance_uuid: int, admin_mode: bool = Depends(has_admin_permissions), requestor: GameParticipant | User = Depends(get_current_participant)):
+    if not admin_mode:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail="Cannot delete this challenge instance")
+                            detail="Cannot delete this challenge instance (insufficient permissions)")
 
     if not db.challenge_instance_exists(game_uuid, challenge_instance_uuid):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
@@ -564,7 +617,7 @@ async def delete_challenge_instance(game_uuid: int, challenge_instance_uuid: int
 # If it is ongoing, its status can be changed by a participant to under_review and back if they think they made a mistake.
 # If it is under_review, times_up or approved, this is not changeable by a participant.
 @app.put("/games/{game_uuid}/challenge_instances/{challenge_instance_uuid}")
-async def update_challenge_instance(game_uuid: int, challenge_instance_uuid: int, updated_challenge_instance: ChallengeInstanceUpDownload, requestor: GameParticipant | User = Depends(get_current_participant)):
+async def update_challenge_instance(game_uuid: int, challenge_instance_uuid: int, updated_challenge_instance: ChallengeInstanceUpDownload, admin_mode: bool = Depends(has_admin_enabled), requestor: GameParticipant | User = Depends(get_current_participant)):
     updated_challenge_instance: ChallengeInstance = ChallengeInstance.from_endpoint_representation(updated_challenge_instance)
     if not db.challenge_instance_exists(game_uuid, challenge_instance_uuid):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
@@ -572,44 +625,43 @@ async def update_challenge_instance(game_uuid: int, challenge_instance_uuid: int
 
     original_instance = db.get_challenge_instance(game_uuid, challenge_instance_uuid)
 
-    admin_permission = isinstance(requestor, User) and is_global_admin(requestor) or requestor.is_admin
     match original_instance.status:
         case ChallengeInstanceStatus.ongoing:
               change_allowed = True
         case ChallengeInstanceStatus.under_review:
               change_allowed = True
         case ChallengeInstanceStatus.times_up:
-              change_allowed = admin_permission
+              change_allowed = admin_mode
         case ChallengeInstanceStatus.approved:
-              change_allowed = admin_permission
+              change_allowed = admin_mode
         case ChallengeInstanceStatus.failed:
-              change_allowed = admin_permission
+              change_allowed = admin_mode
     if not change_allowed:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Cannot update this challenge instance")
 
-    if updated_challenge_instance.status != original_instance.status and not admin_permission:
+    if updated_challenge_instance.status != original_instance.status and not admin_mode:
         if not all([status in [ChallengeInstanceStatus.ongoing, ChallengeInstanceStatus.under_review]] for status in [updated_challenge_instance.status, original_instance.status]):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                 detail="Cannot update this challenge instance status in this way (invalid status transition)")
-    if updated_challenge_instance.overwrite_points != original_instance.overwrite_points and not admin_permission:
+    if updated_challenge_instance.overwrite_points != original_instance.overwrite_points and not admin_mode:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Cannot update this challenge instance in this way (tried to overwrite points)")
-    if updated_challenge_instance.overwrite_leaderboard_to_manual != original_instance.overwrite_leaderboard_to_manual and not admin_permission:
+    if updated_challenge_instance.overwrite_leaderboard_to_manual != original_instance.overwrite_leaderboard_to_manual and not admin_mode:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Cannot update this challenge instance in this way (tried to set leaderboard to manual)")
-    if updated_challenge_instance.leaderboard != original_instance.leaderboard and not admin_permission:
+    if updated_challenge_instance.leaderboard != original_instance.leaderboard and not admin_mode:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Cannot update this challenge instance in this way (tried to overwrite leaderboard)")
-    if updated_challenge_instance.start_time != original_instance.start_time and not admin_permission:
+    if updated_challenge_instance.start_time != original_instance.start_time and not admin_mode:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Cannot update this challenge instance in this way (tried to change start_time)")
-    if updated_challenge_instance.complete_time != original_instance.complete_time and not admin_permission and original_instance.status == ChallengeInstanceStatus.under_review:
+    if updated_challenge_instance.complete_time != original_instance.complete_time and not admin_mode and original_instance.status == ChallengeInstanceStatus.under_review:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Cannot update this challenge instance in this way (tried to change complete_time)")
 
     db.update_challenge_instance(game_uuid, challenge_instance_uuid, updated_challenge_instance)
-    if admin_permission:  # Admins can change which players participate in a challenge instance.
+    if admin_mode:  # Admins can change which players participate in a challenge instance.
         for participant_uuid in updated_challenge_instance.participant_uuids:
             if not participant_uuid in original_instance.participant_uuids:
                 if not db.participant_exists(game_uuid, participant_uuid):
@@ -624,7 +676,7 @@ async def update_challenge_instance(game_uuid: int, challenge_instance_uuid: int
 # Allows a participant to join a challenge instance, only if it is ongoing.
 # This should only be doable by an admin or the user themselves.
 @app.post("/games/{game_uuid}/challenge_instances/{challenge_instance_uuid}/participants")
-async def add_participant(game_uuid: int, challenge_instance_uuid: int, participant: GameParticipantUpDownload, requestor: GameParticipant | User = Depends(get_current_participant)):
+async def add_participant(game_uuid: int, challenge_instance_uuid: int, participant: GameParticipantUpDownload, admin_mode: bool = Depends(has_admin_enabled), requestor: GameParticipant | User = Depends(get_current_participant)):
     if not db.challenge_instance_exists(game_uuid, challenge_instance_uuid):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Cannot update this challenge instance (it does not exist)")
@@ -632,24 +684,44 @@ async def add_participant(game_uuid: int, challenge_instance_uuid: int, particip
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Participant does not exist")
 
-
-    admin_permission = isinstance(requestor, User) and is_global_admin(requestor) or requestor.is_admin
     challenge_instance = db.get_challenge_instance(game_uuid, challenge_instance_uuid)
     participant: GameParticipant = GameParticipant.from_endpoint_representation(participant)
     if participant.user_uuid in challenge_instance.participant_uuids:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Participant already in challenge instance")
-    if not admin_permission and participant.user_uuid != requestor.user_uuid:
+    if not admin_mode and participant.user_uuid != requestor.user_uuid:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Participant cannot join challenge instance (insufficient permissions)")
-    if not admin_permission and not challenge_instance.is_joinable_by(participant, game_uuid, db):
+    if not admin_mode and not challenge_instance.is_joinable_by(participant, game_uuid, db):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Participant cannot join challenge instance")
 
     db.add_challenge_participant(game_uuid, challenge_instance_uuid, participant.user_uuid)
 
     
+# Allows a participant to leave a challenge instance, only if it is ongoing.
+# This should only be doable by an admin or the user themselves.
+@app.delete("/admin/games/{game_uuid}/challenge_instances/{challenge_instance_uuid}/participants/{participant_uuid}")
+async def delete_participant(game_uuid: int, challenge_instance_uuid: int, participant_uuid: int, admin_mode: bool = Depends(has_admin_permissions), requestor: GameParticipant | User = Depends(get_current_participant)):
+    if not db.challenge_instance_exists(game_uuid, challenge_instance_uuid):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Cannot update this challenge instance (it does not exist)")
+    if not db.participant_exists(game_uuid, participant_uuid):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Participant does not exist")
 
+    challenge_instance = db.get_challenge_instance(game_uuid, challenge_instance_uuid)
+    if participant_uuid not in challenge_instance.participant_uuids:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Participant not in challenge instance")
+
+    if not admin_mode:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Participant cannot be removed from challenge instance (insufficient permissions)")
+
+    db.delete_challenge_participant(game_uuid, challenge_instance_uuid, participant_uuid)
+
+    
 # Allows a participant to leave a challenge instance, only if it is ongoing.
 # This should only be doable by an admin or the user themselves.
 @app.delete("/games/{game_uuid}/challenge_instances/{challenge_instance_uuid}/participants/{participant_uuid}")
@@ -661,13 +733,12 @@ async def delete_participant(game_uuid: int, challenge_instance_uuid: int, parti
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Participant does not exist")
 
-    admin_permission = isinstance(requestor, User) and is_global_admin(requestor) or requestor.is_admin
     challenge_instance = db.get_challenge_instance(game_uuid, challenge_instance_uuid)
     if participant_uuid not in challenge_instance.participant_uuids:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Participant not in challenge instance")
 
-    if not admin_permission and participant_uuid != requestor.user_uuid:
+    if participant_uuid != requestor.user_uuid:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Participant cannot be removed from challenge instance (insufficient permissions)")
 
@@ -678,19 +749,50 @@ async def delete_participant(game_uuid: int, challenge_instance_uuid: int, parti
 """
 
 # Gets all challenge submissions of a challenge instance.
+@app.get("/admin/games/{game_uuid}/challenge_instances/{challenge_instance_uuid}/submissions", response_model=Set[ChallengeSubmissionDownload])
+async def get_challenge_submissions(game_uuid: int, challenge_instance_uuid: int, admin_mode: bool = Depends(has_admin_permissions), requestor: GameParticipant | User = Depends(get_current_participant)):
+    if not db.challenge_instance_exists(game_uuid, challenge_instance_uuid):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Challenge instance does not exist")
+    challenge_instance = db.get_challenge_instance(game_uuid, challenge_instance_uuid)
+    if not admin_mode:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Cannot access challenge instance (insufficient permissions)")
+
+    return {value.to_endpoint_representation(lambda filename: db.get_challenge_submission_full_path_from_filename(game_uuid, filename)) for value in db.get_challenge_submissions(game_uuid).values() \
+            if value.challenge_submission_uuid in challenge_instance.challenge_submission_uuids}
+
+# Gets all challenge submissions of a challenge instance.
 @app.get("/games/{game_uuid}/challenge_instances/{challenge_instance_uuid}/submissions", response_model=Set[ChallengeSubmissionDownload])
 async def get_challenge_submissions(game_uuid: int, challenge_instance_uuid: int, requestor: GameParticipant | User = Depends(get_current_participant)):
     if not db.challenge_instance_exists(game_uuid, challenge_instance_uuid):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Challenge instance does not exist")
     challenge_instance = db.get_challenge_instance(game_uuid, challenge_instance_uuid)
-    admin_permission = isinstance(requestor, User) and is_global_admin(requestor) or requestor.is_admin
-    if not admin_permission and not requestor.user_uuid in challenge_instance.participant_uuids:
+    if not requestor.user_uuid in challenge_instance.participant_uuids:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Cannot access challenge instance submissions")
 
     return {value.to_endpoint_representation(lambda filename: db.get_challenge_submission_full_path_from_filename(game_uuid, filename)) for value in db.get_challenge_submissions(game_uuid).values() \
             if value.challenge_submission_uuid in challenge_instance.challenge_submission_uuids}
+
+# Gets a challenge submission of a challenge instance.
+@app.get("/admin/games/{game_uuid}/challenge_instances/{challenge_instance_uuid}/submissions/{submission_uuid}", response_model=ChallengeSubmissionDownload)
+async def get_challenge_submission(game_uuid: int, challenge_instance_uuid: int, challenge_submission_uuid: int, admin_mode: bool = Depends(has_admin_permissions), requestor: GameParticipant | User = Depends(get_current_participant)):
+    if not db.challenge_instance_exists(game_uuid, challenge_instance_uuid):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Challenge instance does not exist")
+    if not admin_mode:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Cannot access challenge instance submissions")
+         
+    challenge_instance = db.get_challenge_instance(game_uuid, challenge_instance_uuid)
+    if challenge_submission_uuid not in challenge_instance.challenge_submission_uuids:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Challenge instance submission does not exist")
+
+    challenge_submission = db.get_challenge_submission(game_uuid, challenge_submission_uuid)
+    return challenge_submission.to_endpoint_representation(lambda filename: db.get_challenge_submission_full_path_from_filename(game_uuid, filename))
 
 # Gets a challenge submission of a challenge instance.
 @app.get("/games/{game_uuid}/challenge_instances/{challenge_instance_uuid}/submissions/{submission_uuid}", response_model=ChallengeSubmissionDownload)
@@ -699,8 +801,7 @@ async def get_challenge_submission(game_uuid: int, challenge_instance_uuid: int,
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Challenge instance does not exist")
     challenge_instance = db.get_challenge_instance(game_uuid, challenge_instance_uuid)
-    admin_permission = isinstance(requestor, User) and is_global_admin(requestor) or requestor.is_admin
-    if not admin_permission and not requestor.user_uuid in challenge_instance.participant_uuids:
+    if not requestor.user_uuid in challenge_instance.participant_uuids:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Cannot access challenge instance submissions")
     if challenge_submission_uuid not in challenge_instance.challenge_submission_uuids:
@@ -717,10 +818,6 @@ async def get_challenge_submission_file(game_uuid: int, challenge_instance_uuid:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Challenge instance does not exist")
     challenge_instance = db.get_challenge_instance(game_uuid, challenge_instance_uuid)
-    admin_permission = isinstance(requestor, User) and is_global_admin(requestor) or requestor.is_admin
-    if not admin_permission and not requestor.user_uuid in challenge_instance.participant_uuids:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail="Cannot access challenge instance submissions")
     if submission_uuid not in challenge_instance.challenge_submission_uuids:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Challenge instance submission does not exist")
@@ -737,13 +834,13 @@ async def get_challenge_submission_file(game_uuid: int, challenge_instance_uuid:
 @app.post("/games/{game_uuid}/challenge_instances/{challenge_instance_uuid}/submissions", response_model=ChallengeSubmissionDownload)
 async def add_challenge_submission(game_uuid: int, challenge_instance_uuid: int,
                                    submission: Annotated[ChallengeSubmissionUpload, Form()],
+                                   admin_mode: bool = Depends(has_admin_enabled),
                                    requestor: GameParticipant | User = Depends(get_current_participant)):
     if not db.challenge_instance_exists(game_uuid, challenge_instance_uuid):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Challenge instance does not exist")
     challenge_instance = db.get_challenge_instance(game_uuid, challenge_instance_uuid)
-    admin_permission = isinstance(requestor, User) and is_global_admin(requestor) or requestor.is_admin
-    if not admin_permission and not (requestor.user_uuid in challenge_instance.participant_uuids and challenge_instance.status == ChallengeInstanceStatus.ongoing):
+    if not admin_mode and not (requestor.user_uuid in challenge_instance.participant_uuids and challenge_instance.status == ChallengeInstanceStatus.ongoing):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Cannot access challenge instance submissions")
     if not all([get_file_type(file.filename) in ['image', 'video'] for file in submission.data]):
@@ -757,14 +854,30 @@ async def add_challenge_submission(game_uuid: int, challenge_instance_uuid: int,
 
 # Deletes a challenge submission. Also deletes all pictures, videos etc submitted along with it.
 # This should only be doable by an admin or the person that submitted it.
+@app.delete("/admin/games/{game_uuid}/challenge_instances/{challenge_instance_uuid}/submissions/{submission_uuid}", status_code=204) # Status code 204 corresponds to 'request fulfilled, no content to return'.
+async def delete_challenge_submission(game_uuid: int, challenge_instance_uuid: int, submission_uuid: int, admin_mode: bool = Depends(has_admin_permissions), requestor: GameParticipant | User = Depends(get_current_participant)):
+    if not admin_mode:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Cannot access challenge instance submissions (insufficient permissions)")
+    if not db.challenge_instance_exists(game_uuid, challenge_instance_uuid):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Challenge instance does not exist")
+    challenge_instance = db.get_challenge_instance(game_uuid, challenge_instance_uuid)
+    if submission_uuid not in challenge_instance.challenge_submission_uuids:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Challenge instance submission does not exist")
+
+    db.delete_challenge_submission(game_uuid, challenge_instance_uuid, submission_uuid)
+
+# Deletes a challenge submission. Also deletes all pictures, videos etc submitted along with it.
+# This should only be doable by an admin or the person that submitted it.
 @app.delete("/games/{game_uuid}/challenge_instances/{challenge_instance_uuid}/submissions/{submission_uuid}", status_code=204) # Status code 204 corresponds to 'request fulfilled, no content to return'.
 async def delete_challenge_submission(game_uuid: int, challenge_instance_uuid: int, submission_uuid: int, requestor: GameParticipant | User = Depends(get_current_participant)):
     if not db.challenge_instance_exists(game_uuid, challenge_instance_uuid):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Challenge instance does not exist")
     challenge_instance = db.get_challenge_instance(game_uuid, challenge_instance_uuid)
-    admin_permission = isinstance(requestor, User) and is_global_admin(requestor) or requestor.is_admin
-    if not admin_permission and not (requestor.user_uuid in challenge_instance.participant_uuids and challenge_instance.status == ChallengeInstanceStatus.ongoing):
+    if not (requestor.user_uuid in challenge_instance.participant_uuids and challenge_instance.status == ChallengeInstanceStatus.ongoing):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Cannot access challenge instance submissions")
     if submission_uuid not in challenge_instance.challenge_submission_uuids:

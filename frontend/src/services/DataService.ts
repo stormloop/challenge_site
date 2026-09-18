@@ -107,6 +107,7 @@ export function useDataService() {
             });
         Object.keys(response).forEach(function(key, _) {
             response[key] = Object.assign(new Game(), response[key]);
+            response[key].participant_uuids = new Set(response[key].participant_uuids);
         });
         return response;
     }
@@ -177,13 +178,37 @@ export function useDataService() {
         });
     }
 
-    const leaveGame = async (user: User,
-                                game: Game,
+    /**
+     * Updates a Game.
+     * Only possible with admin permissions
+     */
+    const updateGame = async (game: Game,
                                 setLoading: Function = DEFAULT_SET_LOADING,
                                 setError: Function = DEFAULT_SET_ERROR) : Promise<void>  => {
         await APIRequest( {
             token: await getToken(),
-            endpoint: `/games/${game.game_uuid}/participants/${user.user_uuid}`,
+            endpoint: `/admin/games/${game.game_uuid}`,
+            requestType: RequestType.PUT,
+            bodyContentType: ContentType.JSON,
+            responseContentType: ContentType.JSON,
+            setLoading: setLoading,
+            setError: setError,
+            body: game,
+        });
+    }
+
+    /**
+     * Attempts to make the specified user leave the specified game.
+     * If this is not done in admin_mode, the user can only be yourself, otherwise, any participant can be deleted.
+     */
+    const leaveGame = async (user: User,
+                                game: Game,
+                                admin_mode: boolean,
+                                setLoading: Function = DEFAULT_SET_LOADING,
+                                setError: Function = DEFAULT_SET_ERROR) : Promise<void>  => {
+        await APIRequest( {
+            token: await getToken(),
+            endpoint: (admin_mode ? "/admin" : "") + `/games/${game.game_uuid}/participants/${user.user_uuid}`,
             requestType: RequestType.DELETE,
             bodyContentType: ContentType.JSON,
             responseContentType: ContentType.JSON,
@@ -214,11 +239,12 @@ export function useDataService() {
      */
     const getParticipant = async (user: User,
                                     game: Game,
+                                    admin_mode: boolean,
                                     setLoading: Function = DEFAULT_SET_LOADING,
                                     setError: Function = DEFAULT_SET_ERROR) : Promise<Participant>  => {
         const response: any = await APIRequest( {
             token: await getToken(),
-            endpoint: `/games/${game.game_uuid}/participants/${user.user_uuid}`,
+            endpoint: (admin_mode ? "/admin" : "") + `/games/${game.game_uuid}/participants/${user.user_uuid}`,
             requestType: RequestType.GET,
             bodyContentType: ContentType.JSON,
             responseContentType: ContentType.JSON,
@@ -237,11 +263,12 @@ export function useDataService() {
      */
     const getParticipants = async (game: Game,
                                     my_user_uuid: string,
+                                    admin_mode: boolean,
                                     setLoading: Function = DEFAULT_SET_LOADING,
                                     setError: Function = DEFAULT_SET_ERROR) : Promise<{[key: string] : Participant}>  => {
         const response: {[key: string] : Participant} = await APIRequest( {
             token: await getToken(),
-            endpoint: `/games/${game.game_uuid}/participants`,
+            endpoint: (admin_mode ? "/admin" : "") + `/games/${game.game_uuid}/participants`,
             requestType: RequestType.GET,
             bodyContentType: ContentType.JSON,
             responseContentType: ContentType.JSON,
@@ -294,11 +321,9 @@ export function useDataService() {
                                         admin_mode: boolean,
                                         setLoading: Function = DEFAULT_SET_LOADING,
                                         setError: Function = DEFAULT_SET_ERROR) : Promise<Challenge[]> => {
-        if (admin_mode)
-            throw new Error("Admin mode not implemented");
         const response: Set<Challenge> = await APIRequest( {
                 token: await getToken(),
-                endpoint: `/games/${game.game_uuid}/challenges`,
+                endpoint: (admin_mode ? "/admin" : "") + `/games/${game.game_uuid}/challenges`,
                 requestType: RequestType.GET,
                 bodyContentType: ContentType.JSON,
                 responseContentType: ContentType.JSON,
@@ -307,6 +332,100 @@ export function useDataService() {
                 body: null,
                 });
         return [...response].map((value: Challenge, _: number) => Object.assign(new Challenge(), value));
+    }
+
+    /**
+     * Removes a challenge from a game.
+     * Only possible with admin permissions
+     */
+    const deleteChallenge = async (game: Game,
+                                        challenge: Challenge,
+                                        setLoading: Function = DEFAULT_SET_LOADING,
+                                        setError: Function = DEFAULT_SET_ERROR) : Promise<void> => {
+        await APIRequest( {
+                token: await getToken(),
+                endpoint: `/admin/games/${game.game_uuid}/challenges/${challenge.challenge_uuid}`,
+                requestType: RequestType.DELETE,
+                bodyContentType: ContentType.JSON,
+                responseContentType: ContentType.JSON,
+                setLoading: setLoading,
+                setError: setError,
+                body: null,
+                });
+    }
+
+    /**
+     * adds a challenge to a game.
+     * Only possible with admin permissions
+     */
+    const addChallenge = async (game: Game,
+                                        challenge: Challenge,
+                                        setLoading: Function = DEFAULT_SET_LOADING,
+                                        setError: Function = DEFAULT_SET_ERROR) : Promise<Challenge> => {
+        const response: Challenge = await APIRequest( {
+                token: await getToken(),
+                endpoint: `/admin/games/${game.game_uuid}/challenges/`,
+                requestType: RequestType.POST,
+                bodyContentType: ContentType.JSON,
+                responseContentType: ContentType.JSON,
+                setLoading: setLoading,
+                setError: setError,
+                body: challenge,
+                });
+        return Object.assign(new Challenge(), response);
+    }
+
+    /**
+     * adds a challenge to a game.
+     * Only possible with admin permissions
+     */
+    const updateChallenge = async (game: Game,
+                                        updated_challenge: Challenge,
+                                        setLoading: Function = DEFAULT_SET_LOADING,
+                                        setError: Function = DEFAULT_SET_ERROR) : Promise<Challenge> => {
+        const response: Challenge = await APIRequest( {
+                token: await getToken(),
+                endpoint: `/admin/games/${game.game_uuid}/challenges/${updated_challenge.challenge_uuid}`,
+                requestType: RequestType.PUT,
+                bodyContentType: ContentType.JSON,
+                responseContentType: ContentType.JSON,
+                setLoading: setLoading,
+                setError: setError,
+                body: updated_challenge,
+                });
+        return Object.assign(new Challenge(), response);
+    }
+
+    /**
+     * Returns a list of all challenge instances.
+     * Requires the user to have admin permissions.
+     */
+    const getAllChallengeInstances = async (game: Game,
+                                            participants: {[key: string] : Participant},
+                                            setLoading: Function = DEFAULT_SET_LOADING,
+                                            setError: Function = DEFAULT_SET_ERROR) : Promise<ChallengeInstance[]> => {
+
+        const response: Set<ChallengeInstance> = await APIRequest( {
+                token: await getToken(),
+                endpoint: `/admin/games/${game.game_uuid}/challenge_instances`,
+                requestType: RequestType.GET,
+                bodyContentType: ContentType.JSON,
+                responseContentType: ContentType.JSON,
+                setLoading: setLoading,
+                setError: setError,
+                body: null,
+                });
+        
+        let challengeInstanceArray: ChallengeInstance[] = [...response];
+        for (var i = 0; i < challengeInstanceArray.length; i++) {
+            const challengeInstance = Object.assign(new ChallengeInstance(), challengeInstanceArray[i]);
+            challengeInstance.challenge = Object.assign(new Challenge(), challengeInstance.challenge);
+            challengeInstance.leaderboard = challengeInstance.leaderboard == null ? [] : challengeInstance.leaderboard.map((value: any, _: any) => Object.assign(new LeaderboardEntry(), {participant: participants[value[0]], value: value[1] as number}));
+            challengeInstance.participant_uuids = new Set<string>(challengeInstance.participant_uuids);
+            challengeInstance.challenge_submission_uuids = new Set<string>(challengeInstance.challenge_submission_uuids);
+            challengeInstanceArray[i] = challengeInstance;
+        }
+        return challengeInstanceArray;
     }
 
     /**
@@ -320,12 +439,10 @@ export function useDataService() {
                                             admin_mode: boolean,
                                             setLoading: Function = DEFAULT_SET_LOADING,
                                             setError: Function = DEFAULT_SET_ERROR) : Promise<ChallengeInstance[]> => {
-        if (admin_mode)
-            throw new Error("Admin mode not implemented");
         const batch: {[key: string] : BatchRequestProps} = {};
         for (var i = 0; i < participant.challenge_instance_uuids.size; i++) {
             batch[[...participant.challenge_instance_uuids][i]] = {
-                endpoint: `/games/${game.game_uuid}/challenge_instances/${[...participant.challenge_instance_uuids][i]}`,
+                endpoint: (admin_mode ? "/admin" : "") + `/games/${game.game_uuid}/challenge_instances/${[...participant.challenge_instance_uuids][i]}`,
                 requestType: RequestType.GET,
                 contentType: ContentType.JSON,
                 body: null,
@@ -341,16 +458,18 @@ export function useDataService() {
         
         let challengeInstanceArray: ChallengeInstance[] = [];
         for (var key in response) {
-            const challengeInstance = Object.assign(new ChallengeInstance(), response[key]);
+            const challengeInstance: ChallengeInstance = Object.assign(new ChallengeInstance(), response[key]);
             challengeInstance.challenge = Object.assign(new Challenge(), challengeInstance.challenge);
             challengeInstance.leaderboard = challengeInstance.leaderboard == null ? [] : challengeInstance.leaderboard.map((value: any, _: any) => Object.assign(new LeaderboardEntry(), {participant: participants[value[0]], value: value[1] as number}));
+            challengeInstance.participant_uuids = new Set<string>(challengeInstance.participant_uuids);
+            challengeInstance.challenge_submission_uuids = new Set<string>(challengeInstance.challenge_submission_uuids);
             challengeInstanceArray.push(challengeInstance);
         }
         return challengeInstanceArray;
     }
 
     /**
-     * Returns a list of all challenge instances that are joinable by this user for a certain challenge.
+     * Returns a instance, if it is visibile by this user.
      */
     const getChallengeInstance = async (game: Game,
                                         challengeInstanceUuid: string,
@@ -370,6 +489,8 @@ export function useDataService() {
         const challengeInstance = Object.assign(new ChallengeInstance(), response);
         challengeInstance.leaderboard = challengeInstance.leaderboard == null ? [] : challengeInstance.leaderboard.map((value: any, _: any) => Object.assign(new LeaderboardEntry(), {participant: participants[value[0]], value: value[1] as number}));
         challengeInstance.challenge = Object.assign(new Challenge(), challengeInstance.challenge);
+        challengeInstance.participant_uuids = new Set<string>(challengeInstance.participant_uuids);
+        challengeInstance.challenge_submission_uuids = new Set<string>(challengeInstance.challenge_submission_uuids);
         
         return challengeInstance;
     }
@@ -397,6 +518,8 @@ export function useDataService() {
         for (var key in response) {
             const challengeInstance = Object.assign(new ChallengeInstance(), response[key]);
             challengeInstance.leaderboard = challengeInstance.leaderboard == null ? [] : challengeInstance.leaderboard.map((value: any, _: any) => Object.assign(new LeaderboardEntry(), {participant: participants[value[0]], value: value[1] as number}));
+            challengeInstance.participant_uuids = new Set<string>(challengeInstance.participant_uuids);
+            challengeInstance.challenge_submission_uuids = new Set<string>(challengeInstance.challenge_submission_uuids);
             challengeInstanceArray.push(challengeInstance);
         }
         return challengeInstanceArray;
@@ -410,15 +533,13 @@ export function useDataService() {
                                             admin_mode: boolean,
                                             setLoading: Function = DEFAULT_SET_LOADING,
                                             setError: Function = DEFAULT_SET_ERROR) : Promise<void> => {
-        if (admin_mode)
-            throw new Error("Admin mode not implemented");
         const {leaderboard, ...other_entries} = newChallengeInstance;
-        const basicLeaderboard: [string, string][] | null = leaderboard == null ? null : leaderboard.map((value, _) => [value.participant.user.user_uuid, "" + value.points]);
+        const basicLeaderboard: [string, string][] | null = (leaderboard == null || leaderboard.length == 0) ? null : leaderboard.map((value, _) => [value.participant.user.user_uuid, "" + value.points]);
         const apiRepresentation = {...other_entries, leaderboard: basicLeaderboard};
 
         await APIRequest( {
                 token: await getToken(),
-                endpoint: `/games/${game.game_uuid}/challenge_instances/${newChallengeInstance.challenge_instance_uuid}`,
+                endpoint: `/games/${game.game_uuid}/challenge_instances/${newChallengeInstance.challenge_instance_uuid}?` + new URLSearchParams({admin_mode: "" + admin_mode}),
                 requestType: RequestType.PUT,
                 bodyContentType: ContentType.JSON,
                 responseContentType: ContentType.JSON,
@@ -428,17 +549,59 @@ export function useDataService() {
             });
     }
 
+    /**
+     * Remove the specified challenge instance.
+     * Only possible with admin permissions
+     */
+    const deleteChallengeInstance = async (game: Game,
+                                            challengeInstance: ChallengeInstance,
+                                            setLoading: Function = DEFAULT_SET_LOADING,
+                                            setError: Function = DEFAULT_SET_ERROR) : Promise<void> => {
+        await APIRequest( {
+                token: await getToken(),
+                endpoint: `/admin/games/${game.game_uuid}/challenge_instances/${challengeInstance.challenge_instance_uuid}`,
+                requestType: RequestType.DELETE,
+                bodyContentType: ContentType.JSON,
+                responseContentType: ContentType.JSON,
+                setLoading: setLoading,
+                setError: setError,
+                body: null,
+            });
+    }
+
+    const addChallengeInstance = async (game: Game,
+                                        challengeInstance: ChallengeInstance,
+                                        admin_mode: boolean,
+                                        setLoading: Function = DEFAULT_SET_LOADING,
+                                        setError: Function = DEFAULT_SET_ERROR) : Promise<ChallengeInstance> => {
+        const {leaderboard, ...other_entries} = challengeInstance;
+        const basicLeaderboard: [string, string][] | null = (leaderboard == null || leaderboard.length == 0) ? null : leaderboard.map((value, _) => [value.participant.user.user_uuid, "" + value.points]);
+        const apiRepresentation = {...other_entries, leaderboard: basicLeaderboard};
+
+        const result: ChallengeInstance = await APIRequest( {
+                token: await getToken(),
+                endpoint: `/games/${game.game_uuid}/challenge_instances?` + new URLSearchParams({admin_mode: "" + admin_mode}),
+                requestType: RequestType.POST,
+                bodyContentType: ContentType.JSON,
+                responseContentType: ContentType.JSON,
+                setLoading: setLoading,
+                setError: setError,
+                body: apiRepresentation,
+            });
+        const returnedChallengeInstance = Object.assign(new ChallengeInstance, result);
+        returnedChallengeInstance.challenge = Object.assign(new Challenge, returnedChallengeInstance.challenge);
+        return returnedChallengeInstance;
+    }
+
     const joinChallengeInstance = async (game: Game,
                                         challengeInstance: ChallengeInstance,
                                         participant: Participant,
                                         admin_mode: boolean,
                                         setLoading: Function = DEFAULT_SET_LOADING,
                                         setError: Function = DEFAULT_SET_ERROR) : Promise<void> => {
-        if (admin_mode)
-            throw new Error("Admin mode not implemented");
         await APIRequest( {
                 token: await getToken(),
-                endpoint: `/games/${game.game_uuid}/challenge_instances/${challengeInstance.challenge_instance_uuid}/participants`,
+                endpoint: `/games/${game.game_uuid}/challenge_instances/${challengeInstance.challenge_instance_uuid}/participants?` + new URLSearchParams({admin_mode: "" + admin_mode}),
                 requestType: RequestType.POST,
                 bodyContentType: ContentType.JSON,
                 responseContentType: ContentType.JSON,
@@ -458,11 +621,9 @@ export function useDataService() {
                                             admin_mode: boolean,
                                             setLoading: Function = DEFAULT_SET_LOADING,
                                             setError: Function = DEFAULT_SET_ERROR) : Promise<void> => {
-        if (admin_mode)
-            throw new Error("Admin mode not implemented");
         await APIRequest( {
                 token: await getToken(),
-                endpoint: `/games/${game.game_uuid}/challenge_instances/${challengeInstance.challenge_instance_uuid}/participants/${participant.user.user_uuid}`,
+                endpoint: (admin_mode ? "/admin" : "") + `/games/${game.game_uuid}/challenge_instances/${challengeInstance.challenge_instance_uuid}/participants/${participant.user.user_uuid}`,
                 requestType: RequestType.DELETE,
                 bodyContentType: ContentType.JSON,
                 responseContentType: ContentType.JSON,
@@ -472,42 +633,17 @@ export function useDataService() {
             });
     }
 
-    const addChallengeInstance = async (game: Game,
-                                        challengeInstance: ChallengeInstance,
-                                        admin_mode: boolean,
-                                        setLoading: Function = DEFAULT_SET_LOADING,
-                                        setError: Function = DEFAULT_SET_ERROR) : Promise<ChallengeInstance> => {
-        if (admin_mode)
-            throw new Error("Admin mode not implemented");
-        const {leaderboard, ...other_entries} = challengeInstance;
-        const basicLeaderboard: [string, string][] | null = leaderboard == null ? null : leaderboard.map((value, _) => [value.participant.user.user_uuid, "" + value.points]);
-        const apiRepresentation = {...other_entries, leaderboard: basicLeaderboard};
-
-        const result: ChallengeInstance = await APIRequest( {
-                token: await getToken(),
-                endpoint: `/games/${game.game_uuid}/challenge_instances`,
-                requestType: RequestType.POST,
-                bodyContentType: ContentType.JSON,
-                responseContentType: ContentType.JSON,
-                setLoading: setLoading,
-                setError: setError,
-                body: apiRepresentation,
-            });
-        const returnedChallengeInstance = Object.assign(new ChallengeInstance, result);
-        returnedChallengeInstance.challenge = Object.assign(new Challenge, returnedChallengeInstance.challenge);
-        return returnedChallengeInstance;
-    }
-
     /**
      * Returns a list of all submissions in a certain challenge instance.
      */
     const getChallengeSubmissions = async (game: Game,
                                             challengeInstance: ChallengeInstance,
+                                            admin_mode: boolean,
                                             setLoading: Function = DEFAULT_SET_LOADING,
                                             setError: Function = DEFAULT_SET_ERROR) : Promise<ChallengeSubmission[]> => {
         const response: Set<ChallengeSubmission> = await APIRequest( {
                 token: await getToken(),
-                endpoint: `/games/${game.game_uuid}/challenge_instances/${challengeInstance.challenge_instance_uuid}/submissions`,
+                endpoint: (admin_mode ? "/admin" : "") + `/games/${game.game_uuid}/challenge_instances/${challengeInstance.challenge_instance_uuid}/submissions`,
                 requestType: RequestType.GET,
                 bodyContentType: ContentType.JSON,
                 responseContentType: ContentType.JSON,
@@ -527,13 +663,11 @@ export function useDataService() {
                                             admin_mode: boolean,
                                             setLoading: Function = DEFAULT_SET_LOADING,
                                             setError: Function = DEFAULT_SET_ERROR) : Promise<ChallengeSubmission> => {
-        if (admin_mode)
-            throw new Error("Admin mode not implemented");
         const submissionForm: FormData = challengeSubmission.ToUploadRepresentation();
 
         const response: ChallengeSubmission = await APIRequest( {
                 token: await getToken(),
-                endpoint: `/games/${game.game_uuid}/challenge_instances/${challengeInstance.challenge_instance_uuid}/submissions`,
+                endpoint: `/games/${game.game_uuid}/challenge_instances/${challengeInstance.challenge_instance_uuid}/submissions?` + new URLSearchParams({admin_mode: "" + admin_mode}),
                 requestType: RequestType.POST,
                 bodyContentType: ContentType.FORMDATA,
                 responseContentType: ContentType.JSON,
@@ -554,11 +688,9 @@ export function useDataService() {
                                             admin_mode: boolean,
                                             setLoading: Function = DEFAULT_SET_LOADING,
                                             setError: Function = DEFAULT_SET_ERROR) : Promise<void> => {
-        if (admin_mode)
-            throw new Error("Admin mode not implemented");
         await APIRequest( {
                 token: await getToken(),
-                endpoint: `/games/${game.game_uuid}/challenge_instances/${challengeInstance.challenge_instance_uuid}/submissions/${challengeSubmission.challenge_submission_uuid}`,
+                endpoint: (admin_mode ? "/admin" : "") + `/games/${game.game_uuid}/challenge_instances/${challengeInstance.challenge_instance_uuid}/submissions/${challengeSubmission.challenge_submission_uuid}`,
                 requestType: RequestType.DELETE,
                 bodyContentType: ContentType.JSON,
                 responseContentType: ContentType.JSON,
@@ -604,16 +736,22 @@ export function useDataService() {
         addUser,
         loadUserPfp,
         updateUserPfp,
+        updateGame,
         leaveGame,
         joinGame,
         getParticipant,
         getParticipants,
         getLeaderboard,
         getVisibleChallenges,
+        addChallenge,
+        deleteChallenge,
+        updateChallenge,
+        getAllChallengeInstances,
         getChallengeInstances,
         getChallengeInstance,
         getJoinableChallengeInstances,
         addChallengeInstance,
+        deleteChallengeInstance,
         joinChallengeInstance,
         updateChallengeInstance,
         leaveChallengeInstance,
