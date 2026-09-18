@@ -93,7 +93,7 @@ def get_current_claims(
                 detail="Token has no subject",
             )
         return claims
-    except jwt.PyJWTError:
+    except jwt.PyJWTError as exc:
         print(f"JWT validation failed: {type(exc).__name__}: {exc}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
