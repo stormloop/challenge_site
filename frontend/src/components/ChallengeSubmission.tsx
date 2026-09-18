@@ -12,6 +12,7 @@ import { useDataService } from '../services/DataService';
 import Pfp from './Pfp';
 import { print_date } from '../utils/pretty_print';
 import { PopupContext } from '../context/PopupContext';
+import { ChallengeType } from '../data/Challenge';
 
 const StyledWrapper = styled.div`
 width: 100%;
@@ -114,7 +115,7 @@ video {
 }
 `;
 
-export const ChallengeSubmission: React.FC<{ auth0interface: Auth0ContextInterface<User>, currentGame: Game, participant: Participant, challengeInstance: ChallengeInstanceObject, challengeSubmission: ChallengeSubmissionObject, submittor: Participant, removeChallengeSubmission: Function }> = ({ currentGame, challengeInstance, challengeSubmission, submittor, removeChallengeSubmission }) => {
+export const ChallengeSubmission: React.FC<{ auth0interface: Auth0ContextInterface<User>, currentGame: Game, participant: Participant, adminEnabled: boolean, challengeInstance: ChallengeInstanceObject, challengeSubmission: ChallengeSubmissionObject, submittor: Participant, removeChallengeSubmission: Function }> = ({ currentGame, adminEnabled, challengeInstance, challengeSubmission, submittor, removeChallengeSubmission }) => {
     const { getSubmissionFiles, removeChallengeSubmission: removeChallengeSubmissionBackend } = useDataService();
     const { closePopup, openPopup } = useContext(PopupContext);
     const theme = useTheme();
@@ -172,7 +173,7 @@ export const ChallengeSubmission: React.FC<{ auth0interface: Auth0ContextInterfa
      * Removes this challenge instance submission.
      */
     function remove(): void {
-        removeChallengeSubmissionBackend(currentGame, challengeInstance, challengeSubmission, false);
+        removeChallengeSubmissionBackend(currentGame, challengeInstance, challengeSubmission, adminEnabled);
         removeChallengeSubmission();
     }
 
@@ -184,6 +185,14 @@ export const ChallengeSubmission: React.FC<{ auth0interface: Auth0ContextInterfa
     // }
 
     function openDeletePopup(): void {
+        const StyledWrapper = styled.div`
+        div {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+        }
+            `;
+
         openPopup({
             header: "Are you sure?",
             getBody: () => {
@@ -219,10 +228,11 @@ export const ChallengeSubmission: React.FC<{ auth0interface: Auth0ContextInterfa
             {
                 !collapsed && (
                     <div className="submission_body">
+                        {challengeInstance.challenge.type == ChallengeType.Contest &&
                         <div className="horizontal_layout">
                             <h1>Contest Entry</h1>
                             <p>{challengeSubmission.contest_entry}</p>
-                        </div>
+                        </div>}
                         <h1>Description</h1>
                         <p>{challengeSubmission.description}</p>
                         <h1>Files</h1>

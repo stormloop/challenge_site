@@ -102,7 +102,7 @@ textarea {
 }
     `;
 
-export const NewSubmissionPopup: React.FC<{ auth0interface: Auth0ContextInterface<User>, currentGame: Game, participant: Participant, allParticipants: { [key: string]: Participant }, challengeInstance: ChallengeInstance, updateChallengeInstance: Function, leaveChallengeInstance: Function, submissions: ChallengeSubmission[], setSubmissions: Function }> = ({ currentGame, participant, allParticipants, challengeInstance, updateChallengeInstance, submissions, setSubmissions }) => {
+export const NewSubmissionPopup: React.FC<{ auth0interface: Auth0ContextInterface<User>, currentGame: Game, participant: Participant, adminEnabled: boolean, allParticipants: { [key: string]: Participant }, challengeInstance: ChallengeInstance, updateChallengeInstance: Function, leaveChallengeInstance: Function, submissions: ChallengeSubmission[], setSubmissions: Function }> = ({ currentGame, participant, adminEnabled, allParticipants, challengeInstance, updateChallengeInstance, submissions, setSubmissions }) => {
     const { addChallengeSubmission, getChallengeInstance } = useDataService();
     const { closePopup, openPopup, refreshPopup } = useContext(PopupContext);
     const theme = useTheme();
@@ -175,7 +175,7 @@ export const NewSubmissionPopup: React.FC<{ auth0interface: Auth0ContextInterfac
             copy.participant_uuid = participant.user.user_uuid;
             copy.submitted_time = new Date().toISOString();
             // The backend also adds necessary data, like a valid uuid and a verified timestamp.
-            const completeSubmission: ChallengeSubmission = await addChallengeSubmission(currentGame, challengeInstance, copy, false);
+            const completeSubmission: ChallengeSubmission = await addChallengeSubmission(currentGame, challengeInstance, copy, adminEnabled);
             // Add to the submissions.
             setSubmissions([...submissions.concat([completeSubmission])]);
             // Clear the new submission fields.

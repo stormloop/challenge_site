@@ -7,6 +7,12 @@ const ChallengeType = {
 } as const;
 type ChallengeType = (typeof ChallengeType)[keyof typeof ChallengeType];
 export { ChallengeType };
+export function ChallengeTypeToString(type: ChallengeType) : string {
+    return type == ChallengeType.Solo ? "Solo"
+            : type == ChallengeType.Coop ? "Co-op"
+            : type == ChallengeType.Contest ? "Contest"
+            : "_INVALID_CHALLENGE_TYPE_";
+}
 
 const ChallengeSpecificationType = {
     ChallengeType : 0,
@@ -26,6 +32,12 @@ const ContestEntryType = {
 } as const;
 type ContestEntryType = (typeof ContestEntryType)[keyof typeof ContestEntryType];
 export { ContestEntryType };
+export function ContestEntryTypeToString(type: ContestEntryType) : string {
+    return type == ContestEntryType.None ? "None"
+            : type == ContestEntryType.Integer ? "Integer"
+            : type == ContestEntryType.Float ? "Float"
+            : "_INVALID_CHALLENGE_TYPE_";
+}
 
 export class Challenge {
     challenge_uuid: string = "_INVALID_UUID_";

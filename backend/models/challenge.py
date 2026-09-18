@@ -119,8 +119,8 @@ class Challenge(BaseModel):
         keys["startable"] = self.is_startable_by(participant, game_uuid, db)
         keys["joinable"] = self.is_joinable_by(participant, game_uuid, db) and len(self.get_joinable_challenge_instances(participant, game_uuid, db)) > 0
 
-        keys["leaderboard_ordering"] = None
-        keys["contest_entry_type"] = None
+        # keys["leaderboard_ordering"] = None
+        # keys["contest_entry_type"] = None
 
         return ChallengeUpDownload(**keys)
 
@@ -131,9 +131,9 @@ class Challenge(BaseModel):
         keys["game_uuid"] = str(endpoint_representation.game_uuid)
         keys.pop("time_period_limit")
         keys.pop("time_date_limit")
-        keys["time_limit"] = datetime.fromisoformat(endpoint_representation["time_date_limit"]) if endpoint_representation["time_date_limit"] is not None \
+        keys["time_limit"] = datetime.fromisoformat(endpoint_representation.time_date_limit) if endpoint_representation.time_date_limit is not None \
                                 else None
-        if endpoint_representation["time_date_limit"] is None:
+        if endpoint_representation.time_date_limit is not None:
             raise Exception("Did not implement timedelta parsing")
         keys.pop("startable")
         keys.pop("joinable")

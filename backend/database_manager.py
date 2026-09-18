@@ -409,7 +409,9 @@ def update_game(game_uuid: int, updated_game: Game):
     updated_game_as_dict = updated_game.model_dump()
     updated_game_as_dict.pop("participant_uuids")
     updated_game_as_dict.pop("supported_challenge_uuids")
-    game = Game.model_construct(**dict(game.model_dump(), updated_game_as_dict))
+    updated_dict = game.model_dump()
+    updated_dict.update(updated_game_as_dict)
+    game = Game.model_construct(**updated_dict)
 
     # Save data in game.json
     _save_game(game)
@@ -664,12 +666,15 @@ def update_supported_challenge(game_uuid: int, challenge_uuid: int, updated_chal
     # Repair the uuid, convert to dict, and replace old values with these new ones.
     updated_challenge.challenge_uuid = challenge_uuid
     updated_challenge_as_dict = updated_challenge.model_dump()
-    new_value = Challenge.model_construct(**dict(challenge_dict[challenge_uuid].model_dump(), updated_challenge_as_dict))
+    updated_dict = challenge_dict[challenge_uuid].model_dump()
+    updated_dict.update(updated_challenge_as_dict)
+    new_value = Challenge.model_construct(**updated_dict)
     challenge_dict[challenge_uuid] = new_value
-    _save_challenges(challenge_dict)
+    _save_challenges(game_uuid,challenge_dict)
 
     for challenge_instance in get_challenge_instances(game_uuid).values():
         if challenge_instance.challenge_uuid == challenge_uuid:
+            challenge_instance.overwrite_points(new_value)
             challenge_instance.update_leaderboard(game_uuid, get_game_participants(game_uuid).values(), new_value, [get_challenge_submission(game_uuid, uuid) for uuid in challenge_instance.challenge_submission_uuids])
             update_challenge_instance(game_uuid, challenge_instance.challenge_instance_uuid, challenge_instance)
 

@@ -48,6 +48,13 @@ class ChallengeInstance(BaseModel):
     leaderboard: List[Tuple[int, str]] | None  # For contests only, maps leaderboard position onto participant_uuids onto their points total (in this challenge)
     overwrite_leaderboard_to_manual: bool  # For contests only.
 
+    def update_overwrite_points(self, challenge):
+        if self.overwrite_points is not None:
+            if len(self.overwrite_points) < len(challenge.points_rewarded):
+                self.overwrite_points.extend([0] * len(challenge.points_rewarded) - len(self.overwrite_points))
+            else:
+                self.overwrite_points = self.overwrite_points[0:len(challenge.points_rewarded)]
+
     # Updates its own leaderboard ranking, but does not save the result to disk.
     def update_leaderboard(self, participants, challenge, submissions):
         if challenge.type != ChallengeType.Contest:
@@ -79,9 +86,10 @@ class ChallengeInstance(BaseModel):
 
     def is_joinable_by(self, viewer: GameParticipant, game_uuid: int, db):
         return viewer.user_uuid not in self.participant_uuids \
+                and db.get_challenge(game_uuid, self.challenge_uuid).type != ChallengeType.Solo \
                 and self.status == ChallengeInstanceStatus.ongoing \
                 and db.get_challenge(game_uuid, self.challenge_uuid).is_joinable_by(viewer, game_uuid, db) \
-                and len(self.participant_uuids) < db.get_challenge(game_uuid, self.challenge_uuid).max_players
+                and len(self.participant_uuids) < (db.get_challenge(game_uuid, self.challenge_uuid).max_players)
 
     def to_endpoint_representation(self, viewer: GameParticipant, game_uuid, db) -> ChallengeInstanceUpDownload:
         keys = self.model_dump()
