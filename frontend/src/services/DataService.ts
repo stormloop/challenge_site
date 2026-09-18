@@ -365,7 +365,7 @@ export function useDataService() {
                                         setError: Function = DEFAULT_SET_ERROR) : Promise<Challenge> => {
         const response: Challenge = await APIRequest( {
                 token: await getToken(),
-                endpoint: `/admin/games/${game.game_uuid}/challenges/`,
+                endpoint: `/admin/games/${game.game_uuid}/challenges`,
                 requestType: RequestType.POST,
                 bodyContentType: ContentType.JSON,
                 responseContentType: ContentType.JSON,
