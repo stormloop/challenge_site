@@ -58,22 +58,24 @@ def set_database_location(new_location: str):
     _DATABASE_PATH = new_location
 
 
-def reset_database_location():
-    """
-    Resets the database path to its standard location.
-    Does not delete the old database.
-    """
-    global _DATABASE_PATH
-    _DATABASE_PATH = os.path.join(".", "data")
+# def reset_database_location():
+#     """
+#     Resets the database path to its standard location.
+#     Does not delete the old database.
+#     """
+#     global _DATABASE_PATH
+#     _DATABASE_PATH = os.path.join(".", "data")
 
 
 def remove_directory_structure():
     """
     Removes the database directory structure from a location.
     """
-    # Remove all currently stored data.
-    if os.path.exists(_DATABASE_PATH):
-        shutil.rmtree(_DATABASE_PATH)  # Recursively delete everything in .\data
+    for root, dirs, files in os.walk(_DATABASE_PATH):
+        for name in files:
+            os.unlink(os.path.join(root, name)) # Deletes files
+        for name in dirs:
+            shutil.rmtree(os.path.join(root, name)) # Deletes directories
 
 
 def create_directory_structure():
