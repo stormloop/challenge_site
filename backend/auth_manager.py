@@ -94,6 +94,7 @@ def get_current_claims(
             )
         return claims
     except jwt.PyJWTError:
+        print(f"JWT validation failed: {type(exc).__name__}: {exc}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid access token",
