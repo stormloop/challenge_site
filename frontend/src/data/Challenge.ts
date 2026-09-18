@@ -42,6 +42,7 @@ export function ContestEntryTypeToString(type: ContestEntryType) : string {
 export class Challenge {
     challenge_uuid: string = "_INVALID_UUID_";
     name: string = "";
+    game_uuid: string = "_INVALID_UUID_";
     points_rewarded: number[] = [0];
     type: ChallengeType = ChallengeType.Solo;
     description: string = "";

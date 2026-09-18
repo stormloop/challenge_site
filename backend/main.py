@@ -459,13 +459,13 @@ async def get_joinable_instances(game_uuid: int, challenge_uuid: int, requestor:
 # Adds a challenge to a game.
 # Uuid generation is done in the backend, so the uuid passed by the user is ignored, and the newly generated uuid is passed to the client in the response body. 
 # This should only be allowed by an admin.
-@app.post("/admin/games/{game_uuid}/challenges", response_model=int)
-async def add_supported_challenge(game_uuid: int, new_challenge: Challenge, admin_mode: bool = Depends(has_admin_permissions), requestor: GameParticipant | User = Depends(get_current_participant)):
+@app.post("/admin/games/{game_uuid}/challenges", response_model=ChallengeUpDownload)
+async def add_supported_challenge(game_uuid: int, new_challenge: ChallengeUpDownload, admin_mode: bool = Depends(has_admin_permissions), requestor: GameParticipant | User = Depends(get_current_participant)):
     if not admin_mode:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                 detail="Cannot add challenge to this game")
     
-    return db.add_supported_challenge(game_uuid, new_challenge)
+    return db.add_supported_challenge(game_uuid, Challenge.from_endpoint_representation(new_challenge)).to_endpoint_representation(requestor, game_uuid, db)
     
 # Deletes a challenge. Deletes all instances of that challenge that have been started or completed already.
 # This should only be doable by an admin.
@@ -493,7 +493,7 @@ async def update_supported_challenge(game_uuid: int, challenge_uuid: int, update
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Challenge does not exist")
     
-    return db.update_supported_challenge(game_uuid, challenge_uuid, Challenge.from_endpoint_representation(updated_challenge))
+    db.update_supported_challenge(game_uuid, challenge_uuid, Challenge.from_endpoint_representation(updated_challenge))
 
 """
     GAME CHALLENGE INSTANCE endpoint.

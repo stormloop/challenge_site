@@ -91,8 +91,8 @@ width: 100%;
  * This implementation allows the designer to define a set of tabs, each with icon and text.
  * The NavBar can then be implemented in the page by usign GetHtml()
  */
-export const Challenge: React.FC<{ auth0interface: Auth0ContextInterface<User>, currentGame: Game, participant: Participant, adminEnabled: boolean, allParticipants: { [key: string]: Participant }, challenge: ChallengeObject, updateChallenge: Function, challengeInstances: ChallengeInstance[], addChallengeInstance: Function }> = ({ auth0interface, currentGame, participant, adminEnabled, allParticipants, challenge, updateChallenge, challengeInstances, addChallengeInstance }) => {
-    const { addChallengeInstance: addChallengeInstanceBackend, getJoinableChallengeInstances, joinChallengeInstance: JoinChallengeInstanceBackend } = useDataService();
+export const Challenge: React.FC<{ auth0interface: Auth0ContextInterface<User>, currentGame: Game, participant: Participant, adminEnabled: boolean, allParticipants: { [key: string]: Participant }, challenge: ChallengeObject, updateChallenge: Function, challengeInstances: ChallengeInstance[], addChallengeInstance: Function, deleteChallenge: Function }> = ({ auth0interface, currentGame, participant, adminEnabled, allParticipants, challenge, updateChallenge, challengeInstances, addChallengeInstance, deleteChallenge }) => {
+    const { addChallengeInstance: addChallengeInstanceBackend, getJoinableChallengeInstances, deleteChallenge: deleteChallengeBackend, joinChallengeInstance: JoinChallengeInstanceBackend } = useDataService();
     const { closePopup, openPopup } = useContext(PopupContext);
     const theme = useTheme();
 
@@ -217,8 +217,44 @@ export const Challenge: React.FC<{ auth0interface: Auth0ContextInterface<User>, 
 
             onAbort: closePopup
         });
-
     }
+    
+        const openDeletePopup = () => {
+            const StyledWrapper = styled.div`
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+    
+                div {
+                    display: flex;
+                    flex-direction: row;
+                    justify-content: space-between;
+                }
+            `;
+    
+            openPopup({
+                header: "Are you sure?",
+                getBody: () => {
+                    return (
+                        <StyledWrapper>
+                            <p>You are attempting to delete '{challenge.name}'</p>
+                            <div>
+                                <Button color={theme.accent_color_5} text="Delete" icon={null} disabled={false} onClick={() => {
+                                    if (currentGame == null)
+                                        throw new Error("Tried to delete instance in game 'null'");
+                                    deleteChallenge();
+                                    deleteChallengeBackend(currentGame, challenge);
+                                    closePopup();
+                                }} />
+                                <Button color={theme.accent_color_3} text="Cancel" icon={null} disabled={false} onClick={closePopup} />
+                            </div>
+                        </StyledWrapper>
+                    );
+                },
+    
+                onAbort: closePopup
+            });
+        }
 
     return (
         <StyledWrapper>
@@ -246,6 +282,7 @@ export const Challenge: React.FC<{ auth0interface: Auth0ContextInterface<User>, 
                     {
                     adminEnabled ? 
                         <div className="buttonsArea">
+                            <Button text="Delete" icon={null} color={theme.accent_color_5} onClick={openDeletePopup} disabled={false} />
                             <Button text="Edit" icon={null} color={theme.accent_color_1} onClick={openEditPopup} disabled={false} />
                             <Button text="Start" icon={null} color={theme.accent_color_2} onClick={startChallenge} disabled={false} />
                         </div>

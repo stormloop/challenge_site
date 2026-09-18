@@ -598,7 +598,7 @@ def get_challenge(game_uuid: int, challenge_uuid: int) -> Challenge:
     return challenges[challenge_uuid]
 
 
-def add_supported_challenge(game_uuid: int, new_challenge: Challenge) -> int:
+def add_supported_challenge(game_uuid: int, new_challenge: Challenge) -> Challenge:
     """
     Adds a challenge to a game.
     Uuid generation is done in the backend, so the uuid passed by the caller is ignored.
@@ -621,7 +621,7 @@ def add_supported_challenge(game_uuid: int, new_challenge: Challenge) -> int:
     game = Game.model_construct(**updated_dict)
     _save_game(game)
 
-    return new_challenge.challenge_uuid
+    return new_challenge
     
 
 def delete_challenge(game_uuid: int, challenge_uuid: int):
@@ -642,11 +642,13 @@ def delete_challenge(game_uuid: int, challenge_uuid: int):
     game = get_game(game_uuid)
     removed_challenge = {"supported_challenge_uuids" : game.supported_challenge_uuids}
     removed_challenge["supported_challenge_uuids"].remove(challenge_uuid)
-    game = Game.model_construct(**dict(game.model_dump(), removed_challenge))
+    updated_dict = game.model_dump()
+    updated_dict.update(removed_challenge)
+    game = Game.model_construct(**updated_dict)
     _save_game(game)
 
     # Delete challenge instances.
-    challenge_instances = get_challenge_instances()
+    challenge_instances = get_challenge_instances(game_uuid)
     for challenge_instance in challenge_instances.values():
         if challenge_instance.challenge_uuid is not challenge_uuid:
             continue
