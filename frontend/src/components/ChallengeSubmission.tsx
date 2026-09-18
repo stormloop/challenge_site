@@ -6,7 +6,6 @@ import Button from './Button';
 import type { Game } from '../data/Game';
 import { ChallengeInstance as ChallengeInstanceObject, ChallengeInstanceStatus } from '../data/ChallengeInstance';
 import type Participant from '../data/Participant';
-import type { Auth0ContextInterface, User } from '@auth0/auth0-react';
 import { ChallengeSubmission as ChallengeSubmissionObject } from '../data/ChallengeSubmission';
 import { useDataService } from '../services/DataService';
 import Pfp from './Pfp';

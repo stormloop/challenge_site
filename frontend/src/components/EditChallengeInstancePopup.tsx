@@ -1,4 +1,3 @@
-import type { Auth0ContextInterface, User } from "@auth0/auth0-react";
 import styled, { useTheme } from "styled-components";
 import type { Game } from "../data/Game";
 import { useContext, useState, type ChangeEvent } from "react";
