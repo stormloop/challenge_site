@@ -85,22 +85,27 @@ const PopupWindow: React.FC<PopupProps> = ({ header, getBody, onAbort }) => {
 
 
 const OverlayWrapper = styled.div`
-
 width: 100%;
 height: 100%;
 display: flex;
 align-items: center;
 justify-content: space-around;
 
-.enabled {
+.overlay_enabled {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
     pointer-events: auto;
     z-index: 1000;
 }
 
-.enabled > * {
+.overlay_enabled > * {
     z-index: 1001;
 }
-`;
+    `;
+
 export interface PopupContextProps {
     closePopup: (depth?: number) => void // Closes the currently open popup, or closes all popups up to and including the specified depth.
     openPopup: (popupProps: PopupProps) => number // Opens a new popup, returns the depth of the popup.
@@ -154,8 +159,18 @@ export const PopupProvider = ({ children }: any) => {
             {children}
             {
                 popups.map((popupProps, currentDepth) => (
-                    <OverlayWrapper key={"popup " + currentDepth} className={currentDepth + 1 < popups.length ? "" : "enabled"}>
-                        <PopupWindow {...popupProps} />
+                    <OverlayWrapper key={"popup " + currentDepth} className={currentDepth + 1 < popups.length ? "overlay" : "overlay_enabled"}>
+                        {
+                            currentDepth + 1 >= popups.length ?  
+                                <div className="overlay_enabled">
+                                    <PopupWindow {...popupProps} />
+                                </div>
+                                : <PopupWindow {...popupProps} />
+                        }
+                        {/* // <div>
+
+                        // </div>
+                        // <PopupWindow {...popupProps} /> */}
                     </OverlayWrapper>
                 )
                 )
