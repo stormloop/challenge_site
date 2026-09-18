@@ -115,7 +115,7 @@ video {
 }
 `;
 
-export const ChallengeSubmission: React.FC<{ auth0interface: Auth0ContextInterface<User>, currentGame: Game, participant: Participant, adminEnabled: boolean, challengeInstance: ChallengeInstanceObject, challengeSubmission: ChallengeSubmissionObject, submittor: Participant, removeChallengeSubmission: Function }> = ({ currentGame, adminEnabled, challengeInstance, challengeSubmission, submittor, removeChallengeSubmission }) => {
+export const ChallengeSubmission: React.FC<{ currentGame: Game, participant: Participant, adminEnabled: boolean, challengeInstance: ChallengeInstanceObject, challengeSubmission: ChallengeSubmissionObject, submittor: Participant, removeChallengeSubmission: Function }> = ({ currentGame, adminEnabled, challengeInstance, challengeSubmission, submittor, removeChallengeSubmission }) => {
     const { getSubmissionFiles, removeChallengeSubmission: removeChallengeSubmissionBackend } = useDataService();
     const { closePopup, openPopup } = useContext(PopupContext);
     const theme = useTheme();

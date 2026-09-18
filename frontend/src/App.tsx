@@ -129,7 +129,7 @@ function App() {
     const participant: Participant = await getParticipant(myUser, currentGame, false);
     setMyParticipant(participant);
 
-    const allParticipants: { [key: string]: Participant } = await getParticipants(currentGame, myUser.user_uuid, false);
+    const allParticipants: { [key: string]: Participant } = await getParticipants(currentGame, myUser.user_uuid, adminEnabled);
     for (var participant_uuid in allParticipants) {
       allParticipants[participant_uuid].user = await loadUserPfp(allParticipants[participant_uuid].user);
     }
@@ -140,7 +140,7 @@ function App() {
   }
   useEffect(() => {
     onChangeCurrentGame();
-  }, [currentGame]);
+  }, [currentGame, adminEnabled]);
 
   function updateUser(user: User) {
     setMyUser(user);
@@ -260,7 +260,7 @@ function App() {
             {/* <fieldset disabled={popup != null}> */}
             {/* disables interactivity when the popup is enabled. */}
             {tab == 0 ? <ChallengeScreen auth0interface={auth0interface} user={myUser} adminEnabled={adminEnabled} participant={myParticipant} allParticipants={participants} currentGame={currentGame} /> :
-              tab == 1 ? <LeaderboardScreen leaderboardEntries={leaderboard} /> :
+              tab == 1 ? <LeaderboardScreen leaderboardEntries={leaderboard} user={myUser} game={currentGame} adminEnabled={adminEnabled} /> :
                 <AccountScreen
                   auth0interface={auth0interface}
                   user={myUser}

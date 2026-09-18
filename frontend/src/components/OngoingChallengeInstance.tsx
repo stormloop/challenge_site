@@ -17,6 +17,7 @@ import { PopupContext } from '../context/PopupContext';
 import { dateComparer } from '../utils/comparers';
 import Leaderboard from './Leaderboard';
 import EditChallengeInstancePopup from './EditChallengeInstancePopup';
+import ProfilePopup from './ProfilePopup';
 
 
 const StyledWrapper = styled.div`
@@ -133,10 +134,11 @@ width: 100%;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    overflow-x: auto;
 }
 `;
 
-export const OngoingChallengeInstance: React.FC<{ auth0interface: Auth0ContextInterface<User>, currentGame: Game, participant: Participant, adminEnabled: boolean, participants: { [key: string]: Participant }, challengeInstance: ChallengeInstanceObject, updateChallengeInstance: Function, leaveChallengeInstance: Function }> = ({ auth0interface, currentGame, participant, adminEnabled, participants, challengeInstance, updateChallengeInstance, leaveChallengeInstance }) => {
+export const OngoingChallengeInstance: React.FC<{ currentGame: Game, participant: Participant, adminEnabled: boolean, participants: { [key: string]: Participant }, challengeInstance: ChallengeInstanceObject, updateChallengeInstance: Function, leaveChallengeInstance: Function, editable: boolean, showLeaderboardPfp: boolean }> = ({ currentGame, participant, adminEnabled, participants, challengeInstance, updateChallengeInstance, leaveChallengeInstance, editable, showLeaderboardPfp }) => {
     const { getChallengeSubmissions, updateChallengeInstance: updateChallengeInstanceBackend, deleteChallengeInstance: deleteChallengeInstanceBackend, leaveChallengeInstance: leaveChallengeInstanceBackend, getChallengeInstance } = useDataService();
     const { closePopup, openPopup } = useContext(PopupContext);
     const theme = useTheme();
@@ -197,7 +199,6 @@ export const OngoingChallengeInstance: React.FC<{ auth0interface: Auth0ContextIn
             getBody: () => {
                 return (
                     <EditChallengeInstancePopup
-                            auth0interface={auth0interface}
                             currentGame={currentGame}
                             participant={participant}
                             allParticipants={participants}
@@ -327,7 +328,9 @@ export const OngoingChallengeInstance: React.FC<{ auth0interface: Auth0ContextIn
             <h1>Description</h1>
             <p>{challengeInstance.challenge.description}</p>
             {
-                adminEnabled ? 
+                !editable ? 
+                <></> 
+                : adminEnabled ? 
                 (
                     <div className="button_area">
                             <Button text="Delete" icon={null} disabled={false} onClick={openDeletePopup} color={theme.accent_color_5} />
@@ -355,7 +358,6 @@ export const OngoingChallengeInstance: React.FC<{ auth0interface: Auth0ContextIn
         openPopup({
             header: "New Submission",
             getBody: () => (<NewSubmissionPopup
-                auth0interface={auth0interface}
                 currentGame={currentGame}
                 participant={participant}
                 adminEnabled={adminEnabled}
@@ -388,14 +390,13 @@ export const OngoingChallengeInstance: React.FC<{ auth0interface: Auth0ContextIn
     const SubmissionsTab = (
         <div className="body submissions_body">
             {/* New submission button */}
-            {challengeInstance.status == ChallengeInstanceStatus.Ongoing && <Button text="New Submission" icon={null} disabled={false} onClick={openNewSubmissionPopup} color={theme.accent_color_1} />}
+            {editable && challengeInstance.status == ChallengeInstanceStatus.Ongoing && <Button text="New Submission" icon={null} disabled={false} onClick={openNewSubmissionPopup} color={theme.accent_color_1} />}
             {/* current submissions */}
             {
                 submissions.length == 0 ?
                     <p>There are no submissions yet.</p>
                     : submissions.sort((a, b) => dateComparer(a.submitted_time, b.submitted_time)).map((value, index) =>
                         <ChallengeSubmissionDisplay key={index}
-                            auth0interface={auth0interface}
                             currentGame={currentGame}
                             participant={participant}
                             adminEnabled={adminEnabled}
@@ -406,10 +407,23 @@ export const OngoingChallengeInstance: React.FC<{ auth0interface: Auth0ContextIn
             }
         </div>
     );
+    
+    function openParticipantPopup(participant: Participant) {
+        openPopup({
+                    header: participant.user.username,
+                    getBody: () => {
+                        return (
+                            <ProfilePopup game={currentGame} user={participant.user} participant={participant} participants={participants} adminEnabled={adminEnabled} />
+                        );
+                    },
+        
+                    onAbort: closePopup
+        });
+    }
 
     const LeaderboardTab = (
         <div className="body leaderboard_body">
-            {challengeInstance.challenge.type == ChallengeType.Contest && <Leaderboard onClick={() => { }} leaderboardEntries={challengeInstance.leaderboard.map((value, index) =>
+            {challengeInstance.challenge.type == ChallengeType.Contest && <Leaderboard onClick={openParticipantPopup} showPfp={showLeaderboardPfp} leaderboardEntries={challengeInstance.leaderboard.map((value, index) =>
                 Object.assign(new LeaderboardEntry(), { participant: value.participant, points: challengeInstance.getPointsForContest(index) })
             )} />}
         </div>

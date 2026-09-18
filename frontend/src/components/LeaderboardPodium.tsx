@@ -75,7 +75,7 @@ top: 28px;
 `;
 
 
-export const LeaderboardPodium: React.FC<{ leaderboardEntries: LeaderboardEntry[], onClick: Function }> = ({ leaderboardEntries }) => {
+export const LeaderboardPodium: React.FC<{ leaderboardEntries: LeaderboardEntry[], onClick: Function }> = ({ leaderboardEntries, onClick }) => {
     return (
         <PodiumStyle>
             {
@@ -89,8 +89,8 @@ export const LeaderboardPodium: React.FC<{ leaderboardEntries: LeaderboardEntry[
                         })
                         .map((value, podium_index) => {  // Get HTML.
                             return <div key={podium_index} className="podium_entry">
-                                <p onClick={() => { throw new Error("onClick not implemented yet") }}>{value.value.participant.user.username}</p>
-                                <div className="large_pfp">
+                                <p onClick={() => onClick(value.index)}>{value.value.participant.user.username}</p>
+                                <div className="large_pfp" onClick={() => onClick(value.index)}>
                                     <Pfp background_color={useTheme().accent_color_5} pfp={value.value.participant.user.profile_picture} />
                                 </div>
                                 <div className="points_container">

@@ -8,10 +8,13 @@ flex-direction: column;
 gap: 0px;
 width: 90%;
 flex 1 1 0;
-overflow: auto;
+overflow-y: auto;
+overflow-x: visible;
 color: ${props => props.theme.text_color};
 font-family: ${props => props.theme.text_font_family};
 align-items: center;
+
+z-index: 1;
 
 .leaderboard_entry {
     display: flex;
@@ -77,7 +80,7 @@ align-items: center;
 `;
 
 
-export const Leaderboard: React.FC<{ leaderboardEntries: LeaderboardEntry[], onClick: Function }> = ({ leaderboardEntries, onClick }) => {
+export const Leaderboard: React.FC<{ leaderboardEntries: LeaderboardEntry[], onClick: Function, showPfp: boolean }> = ({ leaderboardEntries, onClick, showPfp }) => {
     return (
         <LeaderboardStyle>
             {
@@ -85,15 +88,15 @@ export const Leaderboard: React.FC<{ leaderboardEntries: LeaderboardEntry[], onC
                     return <div key={index} className={"leaderboard_entry "
                         + (value.participant.user.is_me ? "highlighted" : (index % 2 == 0 ? "even" : "odd"))
                         + (index == 0 ? " first" : "") + (index == leaderboardEntries.length - 1 ? " last" : "")}
-                        onClick={() => { onClick(index) }}>
+                        onClick={() => { onClick(leaderboardEntries[index].participant) }}>
                         <div>
                             { /* left aligned */}
                             <div className="leaderboard_position">
                                 <p>{index + 1}</p>
                             </div>
-                            <div className="small_pfp">
+                            {showPfp && <div className="small_pfp">
                                 <Pfp background_color={useTheme().accent_color_5} pfp={value.participant.user.profile_picture} />
-                            </div>
+                            </div>}
                             <p>{value.participant.user.username}</p>
                         </div>
                         { /* right aligned */}

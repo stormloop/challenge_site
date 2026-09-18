@@ -291,12 +291,13 @@ export const ChallengeScreen: React.FC<{ auth0interface: Auth0ContextInterface<A
                                         .filter((value, _, __) => value.status == ChallengeInstanceStatus.Ongoing).map((value: ChallengeInstance, index: number) => {
                                             return (
                                                 <OngoingChallengeInstanceDisplay key={value.challenge_instance_uuid}
-                                                    auth0interface={auth0interface}
                                                     currentGame={currentGame}
                                                     participant={participant}
                                                     adminEnabled={adminEnabled}
                                                     participants={allParticipants}
                                                     challengeInstance={value}
+                                                    editable={true}
+                                                    showLeaderboardPfp={true}
                                                     updateChallengeInstance={(instance: ChallengeInstance) => updateChallengeInstance(index, instance)}
                                                     leaveChallengeInstance={() => removeChallengeInstance(value)} />
                                             )
@@ -306,12 +307,13 @@ export const ChallengeScreen: React.FC<{ auth0interface: Auth0ContextInterface<A
                                     challengeInstances.filter((value, _, __) => value.status == ChallengeInstanceStatus.UnderReview).map((value: ChallengeInstance, index: number) => {
                                         return (
                                             <OngoingChallengeInstanceDisplay key={value.challenge_instance_uuid}
-                                                auth0interface={auth0interface}
                                                 currentGame={currentGame}
                                                 participant={participant}
                                                 adminEnabled={adminEnabled} 
                                                 participants={allParticipants}
                                                 challengeInstance={value}
+                                                editable={true}
+                                                showLeaderboardPfp={true}
                                                 updateChallengeInstance={(instance: ChallengeInstance) => updateChallengeInstance(index, instance)}
                                                 leaveChallengeInstance={() => removeChallengeInstance(value)} />
                                         )
@@ -324,12 +326,13 @@ export const ChallengeScreen: React.FC<{ auth0interface: Auth0ContextInterface<A
                                     challengeInstances.filter((value, _, __) => value.status == ChallengeInstanceStatus.Approved).map((value: ChallengeInstance, index: number) => {
                                         return (
                                             <OngoingChallengeInstanceDisplay key={value.challenge_instance_uuid}
-                                                auth0interface={auth0interface}
                                                 currentGame={currentGame}
                                                 participant={participant}
                                                 adminEnabled={adminEnabled}     
                                                 participants={allParticipants}
                                                 challengeInstance={value}
+                                                editable={true}
+                                                showLeaderboardPfp={true}   
                                                 updateChallengeInstance={(instance: ChallengeInstance) => updateChallengeInstance(index, instance)}
                                                 leaveChallengeInstance={() => removeChallengeInstance(value)} />
                                         )

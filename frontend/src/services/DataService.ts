@@ -279,6 +279,7 @@ export function useDataService() {
         const result: {[key: string] : Participant} = {};
         for (var key in response) {
             result[response[key].user.user_uuid] = Object.assign(new Participant(), response[key]);
+            result[response[key].user.user_uuid].challenge_instance_uuids = new Set<string>(result[response[key].user.user_uuid].challenge_instance_uuids);  // Convert challenge_instance_uuids to a set.
             result[response[key].user.user_uuid].user = Object.assign(new User(), result[response[key].user.user_uuid].user);
         }
         result[my_user_uuid].user.is_me = true;

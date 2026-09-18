@@ -25,7 +25,7 @@ z-index: 100;
     color: ${props => props.theme.text_color};
 }
 
-hr {
+.header_hr {
     width: calc(100% + 32px - 2px); // Add padding, remove height.
     position: relative;
     transform: translate(-16px, 0);
@@ -78,7 +78,7 @@ const PopupWindow: React.FC<PopupProps> = ({ header, getBody, onAbort }) => {
                 <h1>{header}</h1>
                 <button className="close_button" onClick={() => onAbort()}>x</button>
             </div>
-            <hr />
+            <hr className="header_hr" />
             {getBody()}
         </StyledWrapper>)
 }

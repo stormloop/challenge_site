@@ -91,7 +91,7 @@ select {
 }
     `;
 
-export const EditChallengeInstancePopup: React.FC<{ auth0interface: Auth0ContextInterface<User>, currentGame: Game, participant: Participant, allParticipants: { [key: string]: Participant }, challengeInstance: ChallengeInstance, updateChallengeInstance: Function, leaveChallengeInstance: Function }> = ({ currentGame, participant, allParticipants, challengeInstance, updateChallengeInstance }) => {
+export const EditChallengeInstancePopup: React.FC<{ currentGame: Game, participant: Participant, allParticipants: { [key: string]: Participant }, challengeInstance: ChallengeInstance, updateChallengeInstance: Function, leaveChallengeInstance: Function }> = ({ currentGame, participant, allParticipants, challengeInstance, updateChallengeInstance }) => {
     const { updateChallengeInstance: updateChallengeInstanceBackend } = useDataService();
     const { closePopup, openPopup } = useContext(PopupContext);
     const theme = useTheme();
