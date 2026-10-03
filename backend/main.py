@@ -769,7 +769,7 @@ async def get_challenge_submissions(game_uuid: int, challenge_instance_uuid: int
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Challenge instance does not exist")
     challenge_instance = db.get_challenge_instance(game_uuid, challenge_instance_uuid)
-    if not requestor.user_uuid in challenge_instance.participant_uuids:
+    if not requestor.user_uuid in challenge_instance.participant_uuids and not challenge_instance.is_visible_by(requestor):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Cannot access challenge instance submissions")
 
