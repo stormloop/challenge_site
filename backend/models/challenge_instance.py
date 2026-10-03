@@ -77,7 +77,8 @@ class ChallengeInstance(BaseModel):
             if leaderboard_index == -1:
                 raise Exception("Participant not found in leaderboard")
             challenge_submissions = db.get_challenge_submissions(game_uuid)
-            submissions_by_participant = len([value for value in challenge_submissions.values() if value.participant_uuid == participant.user_uuid])
+            submissions_by_participant = len([value for value in challenge_submissions.values() if value.participant_uuid == participant.user_uuid \
+                                                                                                   and value.challenge_submission_uuid in self.challenge_submission_uuids])
             if submissions_by_participant == 0:
                 return 0  # If no submission is performed yet, no points are awarded.
             return self.overwrite_points[leaderboard_index] if self.overwrite_points is not None else db.get_challenge(game_uuid, self.challenge_uuid).points_rewarded[leaderboard_index]
