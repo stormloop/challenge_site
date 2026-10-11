@@ -11,6 +11,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application source code.
 COPY . .
 
+# Apply all patches during the image build.
+RUN bash scripts/apply-patches.sh
+
 # FastAPI will listen on this port inside the container.
 EXPOSE 8000
 
