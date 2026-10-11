@@ -27,7 +27,7 @@ def location_matches(
         LEUVEN    -> LEUVEN    = True
         LEUVEN    -> BELGIUM   = True
         BELGIUM   -> LEUVEN    = False
-        JYVASKYLA -> FINLAND   = True
+        JYVÄSKYLÄ -> FINLAND   = True
     """
 
     requested = requested_location.strip().upper()
