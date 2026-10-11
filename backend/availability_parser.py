@@ -11,7 +11,7 @@ from typing import Any
 
 LOCATION_PARENTS: dict[str, set[str]] = {
     "LEUVEN": {"BELGIUM"},
-    "JYVASKYLA": {"FINLAND"},
+    "JYVÄSKYLÄ": {"FINLAND"},
 }
 
 
