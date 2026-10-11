@@ -4,6 +4,11 @@ FROM python:3.13-slim
 # Defines the '/app' directory to be the backend project dir, no matter its actual file location
 WORKDIR /app
 
+# Install the patch utility.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends patch \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install Python dependencies first so Docker can cache this layer.
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
