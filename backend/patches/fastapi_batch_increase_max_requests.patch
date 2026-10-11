@@ -1,5 +1,5 @@
 --- a/fastapi_batch/models/batch_request.py
 +++ b/fastapi_batch/models/batch_request.py
-@@
+@@ -10,7 +10,7 @@
 -    requests: Annotated[Keyed[RequestBatchModel], MaxLen(15), MinLen(1)] = Field(
 +    requests: Annotated[Keyed[RequestBatchModel], MaxLen(127), MinLen(1)] = Field(
